@@ -1,0 +1,2400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centaurus Config Web Tool</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230d9a9e'/%3E%3Cpath d='M14 40 L20 24 L27 30 L36 28 L42 22 L48 26 L44 34 L34 36 L26 46 L20 42 Z' fill='%23fff'/%3E%3Ccircle cx='45' cy='20' r='3.5' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --teal: #0d9a9e;
+    --teal-dark: #0a7f83;
+    --teal-light: #e6f4f4;
+    --teal-border: #bfe0e0;
+    --bg: #eef4f4;
+    --card: #ffffff;
+    --text: #2d3e40;
+    --muted: #6b8284;
+    --err: #d64545;
+    --ok: #2e9e5b;
+    --warn: #e6a23c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; height: 100vh; padding: 12px; gap: 10px;
+    font-size: 13px;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    background: var(--card); border: 1px solid var(--teal-border); border-radius: 10px;
+    padding: 10px 18px; display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 1px 3px rgba(13,154,158,.08);
+  }
+  header img.logo { height: 44px; }
+  header .divider { width: 1px; height: 36px; background: var(--teal-border); }
+  header .title { flex: 1; }
+  header .title h1 { font-size: 17px; color: var(--teal-dark); font-weight: 600; }
+  header .title p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .conn-badge {
+    display: flex; align-items: center; gap: 8px; font-size: 12px;
+    background: var(--teal-light); border: 1px solid var(--teal-border);
+    border-radius: 20px; padding: 5px 14px; color: var(--muted);
+  }
+  .conn-badge .dot { width: 9px; height: 9px; border-radius: 50%; background: #c33; transition: background .2s; }
+  .conn-badge.on .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .conn-badge.on { color: var(--teal-dark); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    background: var(--card); border: 1px solid var(--teal-border); border-radius: 10px;
+    padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+  }
+  .toolbar label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  select, input[type="text"], input[type="number"] {
+    background: #fff; color: var(--text); border: 1px solid var(--teal-border);
+    border-radius: 5px; padding: 4px 7px; font-size: 12px; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--teal); }
+  input[type="number"] { width: 68px; }
+  button {
+    background: var(--teal); color: #fff; border: none; border-radius: 5px;
+    padding: 6px 16px; font-size: 12px; cursor: pointer; font-weight: 500;
+    transition: background .15s;
+  }
+  button:hover { background: var(--teal-dark); }
+  button:active { background: #056a6e; transform: translateY(1px); }
+  button:disabled { background: #b8cccc; cursor: not-allowed; }
+  button.ghost { background: #fff; color: var(--teal-dark); border: 1px solid var(--teal); }
+  button.ghost:hover { background: var(--teal-light); }
+  button.ghost:active { background: #cfe8e8; transform: translateY(1px); }
+  button.stop { background: var(--err); }
+  button.stop:hover { background: #b73636; }
+  button.stop:active { background: #9c2c2c; transform: translateY(1px); }
+  button.small { padding: 3px 10px; font-size: 11px; }
+
+  /* ---------- Main ---------- */
+  .main { display: flex; gap: 10px; flex: 1; min-height: 0; flex-wrap: wrap; }
+  .col-left { flex: 1 1 0; min-width: 380px; max-width: 700px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
+  .col-right { flex: 2 1 0; min-width: 460px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--teal-border); border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .card h2 {
+    font-size: 13px; color: var(--teal-dark); font-weight: 600;
+    padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px solid var(--teal-light);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card h2 .sub { font-size: 11px; color: var(--muted); font-weight: normal; }
+
+  .form-grid { display: grid; grid-template-columns: 100px 1fr; gap: 7px 8px; align-items: center; }
+  .form-grid label { font-size: 12px; color: var(--muted); text-align: right; }
+  .row-btns { display: flex; gap: 8px; margin-top: 10px; }
+  .row-btns button { flex: 1; }
+
+  /* ---------- Data table ---------- */
+  #dataTableWrap { height: 110px; overflow: auto; border: 1px solid var(--teal-border); border-radius: 6px; background: #fbfefe; }
+
+  /* ---------- Decode tiles & charts ---------- */
+  #liveWrap { flex: 1; }
+  .decode-panel {
+    display: flex; flex-direction: column; gap: 6px; width: 262px; flex-shrink: 0;
+  }
+  .io-tile {
+    background: var(--teal-light); border: 1px solid var(--teal-border);
+    border-radius: 6px; overflow: hidden;
+  }
+  .io-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 11px; font-weight: 600; color: var(--teal-dark);
+    padding: 4px 8px; letter-spacing: .4px;
+  }
+  .io-head .io-sub { font-family: Consolas, monospace; font-weight: normal; color: var(--muted); font-size: 10px; }
+  .io-body {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 5px;
+    background: #fbfefe; border-top: 1px solid var(--teal-border);
+    padding: 10px 8px;
+  }
+  .io-body .io-val { font-family: Consolas, monospace; font-size: 26px; font-weight: 600; color: var(--teal-dark); white-space: nowrap; }
+  .io-body.pin .io-val { font-size: 19px; }
+  .io-body .io-mode { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .io-tile.changed .io-body { background: #fff3cd; }
+  .io-tile.out-on .io-body { background: #d9f2e3; }
+  .io-tile.out-on .io-val { color: var(--ok); }
+  .io-tile.out-off .io-body { background: #fbe4e4; }
+  .io-tile.out-off .io-val { color: #b0605f; }
+  .io-tile.in-on .io-body { background: #ddeef7; }
+  .io-tile.in-on .io-val { color: #2a6f97; }
+  .io-tile.in-off .io-body { background: #eef2f5; }
+  .io-tile.in-off .io-val { color: #7a8b99; }
+  .io-tile.analog .io-body { background: #f0e6f6; }
+  .io-tile.analog .io-val { color: #8a4baf; }
+  .chart-box {
+    border: 1px solid var(--teal-border); border-radius: 6px; background: #fbfefe;
+    padding: 6px 8px 4px;
+  }
+  .chart-title { font-size: 12px; color: var(--teal-dark); font-weight: 600; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .chart-title .sub { font-family: Consolas, monospace; color: var(--muted); font-weight: normal; }
+  .chart-box canvas { width: 100%; height: 130px; display: block; }
+  table.data { border-collapse: collapse; width: 100%; font-family: Consolas, monospace; font-size: 12px; }
+  table.data th {
+    position: sticky; top: 0; background: var(--teal-light); color: var(--teal-dark);
+    padding: 5px 8px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--teal-border);
+    white-space: nowrap;
+  }
+  table.data td { padding: 3px 8px; border-bottom: 1px solid #eef5f5; white-space: nowrap; }
+  table.data td.addr { color: var(--muted); }
+  td.val.changed { background: #d9f2e3; transition: background .5s; }
+
+  .bitgrid { display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+  .bitrow { display: flex; align-items: center; gap: 6px; }
+  .bitrow .lbl { font-family: Consolas, monospace; font-size: 11px; color: var(--muted); width: 70px; }
+  .bitgroup { display: flex; gap: 3px; }
+  .bitgroup + .bitgroup { margin-left: 8px; }
+  .bit {
+    width: 26px; height: 26px; border-radius: 5px; display: flex; align-items: center; justify-content: center;
+    background: #eef4f4; color: #9ab3b3; font-family: Consolas, monospace; font-size: 12px;
+    border: 1px solid var(--teal-border);
+  }
+  .bit.on { background: var(--teal); color: #fff; border-color: var(--teal-dark); font-weight: bold; }
+  .bit.changed { outline: 2px solid var(--warn); }
+
+  .placeholder { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
+
+  .rawerr {
+    margin: 8px; padding: 8px 10px; background: #fdeaea; border: 1px solid #f2b8b5;
+    border-radius: 6px; font-family: Consolas, monospace;
+  }
+  .rawerr-tag { color: var(--err); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .rawerr-hex { color: #a03030; font-size: 12px; word-break: break-all; line-height: 1.5; }
+
+  /* ---------- Stats ---------- */
+  .stats-bar {
+    display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 11px; color: var(--muted);
+  }
+  .stats-bar b { color: var(--teal-dark); font-family: Consolas, monospace; }
+  .stats-bar b.bad { color: var(--err); }
+
+  /* ---------- Log ---------- */
+  #logPanel { display: flex; flex-direction: column; min-height: 160px; max-height: 280px; }
+  #logArea {
+    flex: 1; overflow-y: auto; background: #10282a; border-radius: 6px; padding: 6px 8px;
+    font-family: Consolas, "Courier New", monospace; font-size: 12px; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #logArea .ts { color: #5f7d7d; }
+  #logArea .dir-tx { color: #e6b35a; font-weight: bold; }
+  #logArea .dir-rx { color: #7fd4c1; font-weight: bold; }
+  #logArea .info { color: #9fc3bd; }
+  #logArea .err { color: #ff8a80; }
+  #logArea .warn { color: #ffd54f; }
+  #logArea .hex { color: #cfe8e3; }
+
+  .raw-log {
+    height: 160px; overflow-y: auto; background: #10282a; border-radius: 6px; padding: 6px 8px;
+    font-family: Consolas, "Courier New", monospace; font-size: 12px; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .raw-log .ts { color: #5f7d7d; }
+  .raw-log .dir-tx { color: #e6b35a; font-weight: bold; }
+  .raw-log .dir-rx { color: #7fd4c1; font-weight: bold; }
+  .raw-log .hex { color: #cfe8e3; }
+  .raw-log .info { color: #9fc3bd; }
+  .raw-log .err { color: #ff8a80; }
+
+  /* ---------- Environment check ---------- */
+  .env-body { display: flex; flex-direction: column; gap: 6px; }
+  .env-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+  .env-line .env-name { min-width: 92px; color: var(--teal-dark); font-weight: 600; }
+  .env-line .env-state { font-weight: 700; }
+  .env-line.ok .env-state { color: var(--ok); }
+  .env-line.no .env-state { color: #c62828; }
+  .env-line.cond .env-state { color: #b26a00; }
+  .env-line .env-reason { color: var(--muted); }
+  .env-line .env-rec { margin-left: auto; font-size: 11px; color: #fff; background: var(--ok);
+    border-radius: 4px; padding: 1px 7px; }
+  .env-line.no .env-name, .env-line.cond .env-name { color: var(--muted); }
+
+  .hint { font-size: 11px; color: var(--muted); }
+
+  /* ---------- Tools ---------- */
+  .tool-row { display: flex; gap: 6px; align-items: center; }
+  .tool-row input { flex: 1; font-family: Consolas, monospace; }
+  #crcOut { font-family: Consolas, monospace; font-size: 12px; color: var(--teal-dark); margin-top: 6px; word-break: break-all; }
+
+  /* ---------- Calibration ---------- */
+  .cal-columns { display: flex; gap: 10px; align-items: stretch; }
+  .cal-columns .cal-group { flex: 1; }
+  .cal-group { display: flex; flex-direction: column; gap: 7px; }
+  .cal-group.cal-low { background: #e8f4ef; border: 1px solid #c4e3d4; border-radius: 8px; padding: 8px 10px; }
+  .cal-group.cal-high { background: #eef0f8; border: 1px solid #ccd2ec; border-radius: 8px; padding: 8px 10px; }
+  .cal-group.cal-low .cal-title { color: #1e7a4f; }
+  .cal-group.cal-high .cal-title { color: #3f51b5; }
+  .cal-group.cal-low button.cal { border-color: #1e7a4f; color: #1e7a4f; background: #fff; }
+  .cal-group.cal-low button.cal:hover { background: #1e7a4f; color: #fff; }
+  .cal-group.cal-low button.cal:active { background: #155c3c; color: #fff; transform: translateY(1px); }
+  .cal-group.cal-high button.cal { border-color: #3f51b5; color: #3f51b5; background: #fff; }
+  .cal-group.cal-high button.cal:hover { background: #3f51b5; color: #fff; }
+  .cal-group.cal-high button.cal:active { background: #303f8f; color: #fff; transform: translateY(1px); }
+  .cal-divider { height: 1px; background: var(--teal-light); margin: 12px 0; }
+  .cal-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .cal-title { font-size: 13px; font-weight: 600; color: var(--teal-dark); }
+  .cal-reg { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
+  .cal-set { display: flex; align-items: center; gap: 8px; }
+  .cal-set label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .cal-set input {
+    flex: 1; text-align: right; font-family: Consolas, monospace;
+    font-weight: 600; color: var(--teal-dark); background: var(--teal-light);
+  }
+  .cal-quick { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+
+  /* ---------- Expert tools / collapsible cards ---------- */
+  .card.collapsed .collapse-body { display: none; }
+  .card.collapsed .collapse-btn { transform: rotate(180deg); }
+  .card h2 .collapse-btn { min-width: 26px; padding: 2px 8px; }
+  #expertCard h2 .tabs { display: flex; align-items: center; gap: 6px; }
+  #expertCard h2 .tabs .sep { width: 1px; height: 14px; background: var(--teal-border); }
+  .tab {
+    background: #fff; color: var(--teal-dark); border: 1px solid var(--teal-border);
+    border-radius: 4px; padding: 2px 10px; font-size: 11px;
+  }
+  .tab:hover { background: var(--teal-light); }
+  .tab:active { background: #cfe8e8; transform: translateY(1px); }
+  .tab.active { background: var(--teal); color: #fff; border-color: var(--teal-dark); font-weight: 600; }
+  .tab-cb { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); cursor: pointer; }
+  #expertCard.collapsed #expertBody { display: none; }
+  .tabpane { padding-top: 4px; }
+  #expertCard .tabpane[data-pane="log"] #logArea { height: 200px; }
+  #expertCard .tabpane .log-ctrl { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 4px; }
+
+  /* ---------- PIN SET ---------- */
+  .pinset-columns { display: flex; gap: 10px; align-items: stretch; }
+  .pinset-col { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; border-radius: 8px; padding: 8px 10px; }
+  .pinset-col .row-btns { margin-top: auto; }
+  .pinset-col .pinset-grid.v { margin-bottom: 0; }
+  #pin2OutBlock, #pin4OutBlock, #pin5OutBlock { display: flex; flex-direction: column; gap: 7px; }
+  #pin4OutBlock.disabled, #pin5OutBlock.disabled { opacity: .4; pointer-events: none; }
+  .pinset-col.pin-col2 { background: #e6f3f4; border: 1px solid #bfe0e0; }
+  .pinset-col.pin-col4 { background: #f4efe6; border: 1px solid #e3d6bf; }
+  .pinset-col.pin-col5 { background: #f3e9f4; border: 1px solid #e0cde2; }
+  .pin-col-title { font-size: 12px; font-weight: 600; letter-spacing: .5px; margin-bottom: 2px; }
+  .pin-col2 .pin-col-title { color: #0a7f83; }
+  .pin-col4 .pin-col-title { color: #9c6f1e; }
+  .pin-col5 .pin-col-title { color: #7b3f8a; }
+  .pin-col2 button { background: #0a7f83; }
+  .pin-col2 button:hover { background: #086164; }
+  .pin-col2 button:active { background: #04484a; transform: translateY(1px); }
+  .pin-col4 button { background: #9c6f1e; }
+  .pin-col4 button:hover { background: #7d5917; }
+  .pin-col4 button:active { background: #5e4211; transform: translateY(1px); }
+  .pin-col5 button { background: #7b3f8a; }
+  .pin-col5 button:hover { background: #62316e; }
+  .pin-col5 button:active { background: #4a2453; transform: translateY(1px); }
+  .pinset-grid { display: grid; grid-template-columns: 1fr 220px; gap: 7px 10px; align-items: center; margin-bottom: 7px; }
+  .pinset-grid.v { grid-template-columns: 1fr; margin-bottom: 0; }
+  .pinset-col select, .pinset-col .pinset-unit { width: 100%; }
+  .pinset-col .pinset-unit input { width: 100%; }
+  .pinset-lbl { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .reg-tag {
+    font-family: Consolas, monospace; font-size: 9.5px; color: var(--teal-dark);
+    background: var(--teal-light); border: 1px solid var(--teal-border); border-radius: 3px; padding: 0 4px;
+  }
+  .pinset-unit { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .pinset-unit input { width: 80px; }
+  #pin2OutBlock, #pin4OutBlock, #pin5OutBlock { border-top: 1px dashed var(--teal-border); padding-top: 8px; margin-top: 2px; }
+  #pin2OutBlock.disabled, #pin4OutBlock.disabled, #pin5OutBlock.disabled { opacity: .4; pointer-events: none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1100px) {
+    .col-left, .col-right { flex-basis: 100%; max-width: none; min-height: 600px; }
+    .main { overflow-y: auto; }
+  }
+  @media (max-width: 700px) {
+    .toolbar { gap: 6px 8px; }
+    .toolbar label { flex-wrap: wrap; }
+    .cal-columns { flex-direction: column; }
+    .pinset-columns { flex-direction: column; }
+    .cal-quick { grid-template-columns: repeat(4, 1fr); }
+    .io-body .io-val { font-size: 20px; }
+    .io-body.pin .io-val { font-size: 15px; }
+    .decode-panel { width: 150px; }
+    .chart-box canvas { height: 90px; }
+  }
+  .cal-quick button {
+    background: #fff; color: var(--teal-dark); border: 1px solid var(--teal-border);
+    border-radius: 4px; padding: 4px 0; font-size: 11px; font-family: Consolas, monospace;
+  }
+  .cal-quick button:hover { background: var(--teal-light); }
+  .cal-quick button:active { background: #cfe8e8; transform: translateY(1px); }
+  .cal-quick button.active { background: var(--teal); color: #fff; border-color: var(--teal-dark); font-weight: 600; }
+  button.cal {
+    width: 100%; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 6px; background: var(--teal-light); color: var(--teal-dark);
+    border: 1px solid var(--teal); border-radius: 8px;
+  }
+  button.cal:hover { background: var(--teal); color: #fff; }
+  button.cal:active { background: #056a6e; color: #fff; transform: translateY(1px); }
+  button.cal:disabled { background: #eef4f4; color: #b8cccc; border-color: #d8e8e8; }
+  button.cal .cal-name { font-size: 14px; font-weight: 600; }
+  button.cal.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+  button.cal.fail { background: var(--err); border-color: var(--err); color: #fff; }
+
+  /* ---------- Language switch ---------- */
+  .tp-grid { grid-template-columns: 90px 1fr; }
+  .tp-extra { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .inner-card { background: var(--bg); }
+  .inner-card h2 { border-bottom-color: var(--teal-border); }
+  .lang-switch {
+    display: flex; gap: 4px; background: #fff; border: 1px solid var(--teal-border);
+    border-radius: 6px; padding: 3px;
+  }
+  .lang-btn {
+    background: transparent; color: var(--muted); border: none; border-radius: 4px;
+    padding: 3px 10px; font-size: 12px; cursor: pointer;
+  }
+  .lang-btn:hover { background: var(--teal-light); color: var(--teal-dark); }
+  .lang-btn:active { background: #cfe8e8; transform: translateY(1px); }
+  .lang-btn.active { background: var(--teal); color: #fff; font-weight: 600; }
+
+  /* ---------- Hint visibility toggle ---------- */
+  .hint-toggle {
+    width: 34px; height: 34px; border-radius: 50%; padding: 0;
+    background: var(--teal-light); color: var(--teal-dark);
+    border: 1px solid var(--teal-border); font-size: 16px; font-weight: 700; line-height: 1;
+  }
+  .hint-toggle:hover { background: var(--teal); color: #fff; }
+  .hint-toggle:active { background: #056a6e; transform: translateY(1px); }
+  .hint-toggle.off { background: #fff; color: var(--muted); border: 1px dashed var(--teal-border); }
+  body.hints-hidden .hint,
+  body.hints-hidden .hint-item,
+  body.hints-hidden .reg-tag,
+  body.hints-hidden .io-sub,
+  body.hints-hidden .cal-reg,
+  body.hints-hidden .io-mode { display: none !important; }
+  body.hints-hidden .io-body { justify-content: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="assets/CAPTRON-safe-light.svg" alt="CAPTRON">
+  <div class="divider"></div>
+  <div class="title">
+    <h1>Centaurus Config Web Tool</h1>
+    <p></p>
+  </div>
+  <div class="lang-switch" id="langSwitch">
+    <button data-lang="zh" class="lang-btn active">中文</button>
+    <button data-lang="en" class="lang-btn">EN</button>
+    <button data-lang="de" class="lang-btn">DE</button>
+  </div>
+  <button class="hint-toggle" id="hintToggle" title="Show / hide hints">ⓘ</button>
+  <div class="conn-badge" id="connBadge">
+    <span class="dot"></span><span id="connText">串口未连接</span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Left column -->
+  <div class="col-left">
+
+    <!-- Environment / capability check -->
+    <div class="card" id="envCard">
+      <h2><span data-i18n="envCheck">环境检测</span> <span class="sub" id="envSummary"></span></h2>
+      <div id="envBody" class="env-body"></div>
+    </div>
+
+    <!-- Connection card -->
+    <div class="card">
+      <h2><span data-i18n="connection">通信连接</span>
+        <select id="transportSel">
+          <option value="serial" selected data-i18n-opt="trSerial">串口 USB</option>
+          <option value="wifi" data-i18n-opt="trWifi">WiFi</option>
+          <option value="ble" data-i18n-opt="trBle">蓝牙 BLE</option>
+        </select>
+      </h2>
+      <div class="tp-pane" id="tpSerial">
+        <div class="form-grid tp-grid">
+          <label data-i18n="port">串口</label>
+          <span><select id="portSelect" style="min-width: 140px;"><option value="-1" data-i18n="clickRefresh">点击"获取串口"</option></select></span>
+          <label data-i18n="baud">波特率</label>
+          <span>
+            <select id="baudRate">
+              <option>1200</option><option>2400</option><option>4800</option><option>9600</option>
+              <option>19200</option><option>38400</option><option value="57600">57600</option>
+              <option value="115200" selected>115200</option><option>230400</option>
+            </select>
+          </span>
+          <label data-i18n="parity">校验</label>
+          <span><select id="parity"><option value="none" selected data-i18n-opt="none">无</option><option value="even" data-i18n-opt="even">偶</option><option value="odd" data-i18n-opt="odd">奇</option></select></span>
+          <label data-i18n="stopBits">停止位</label>
+          <span><select id="stopBits"><option value="1" selected>1</option><option value="2">2</option></select></span>
+        </div>
+        <div class="row-btns">
+          <button class="ghost small" id="refreshBtn" data-i18n="refreshPorts">获取串口</button>
+          <button class="ghost small" id="addPortBtn" data-i18n="addNewPort">添加新串口</button>
+          <button id="connectBtn" data-i18n="connect">连接</button>
+          <button class="stop" id="disconnectBtn" disabled data-i18n="disconnect">断开</button>
+        </div>
+
+        <div class="tp-extra">
+          <div class="card collapsible inner-card" id="pollCard">
+            <h2>
+              <span data-i18n="pollingConfig">轮询配置</span> <span class="sub" id="pollState" data-i18n="stopped">已停止</span>
+              <button class="ghost small collapse-btn" id="pollToggle" title="Collapse / expand">▲</button>
+            </h2>
+            <div class="collapse-body">
+              <div class="form-grid">
+                <label data-i18n="slaveId">从机地址</label><input type="number" id="slaveId" value="1" min="1" max="247">
+                <label data-i18n="function">功能码</label>
+                <select id="funcCode">
+                  <option value="03" selected data-i18n-opt="fc03">03 读保持寄存器</option>
+                  <option value="04" data-i18n-opt="fc04">04 读输入寄存器</option>
+                  <option value="01" data-i18n-opt="fc01">01 读线圈</option>
+                  <option value="02" data-i18n-opt="fc02">02 读离散输入</option>
+                </select>
+                <label data-i18n="startAddr">起始地址</label><input type="number" id="startAddr" value="0" min="0" max="65535">
+                <label data-i18n="quantity">数据量</label><input type="number" id="quantity" value="8" min="1" max="2000">
+                <label data-i18n="interval">轮询间隔</label>
+                <span><input type="number" id="interval" value="100" min="20" step="10"> ms</span>
+                <label data-i18n="timeout">超时</label>
+                <span><input type="number" id="timeoutMs" value="100" min="50" step="10"> ms</span>
+              </div>
+              <div class="row-btns">
+                <button id="pollBtn" data-i18n="startPolling">启动轮询</button>
+                <button class="ghost" id="onceBtn" data-i18n="readOnce">读一次</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card collapsible inner-card" id="expertCard">
+            <h2>
+              <span data-i18n="expertTools">专家工具</span>
+              <span class="tabs">
+                <button class="tab" data-tab="write" data-i18n="write">写入</button>
+                <button class="tab" data-tab="debug" data-i18n="debug">调试</button>
+                <span class="sep"></span>
+                <label class="tab-cb"><input type="checkbox" id="showHexTab"> <span data-i18n="hexTable">HEX数据表</span></label>
+                <label class="tab-cb"><input type="checkbox" id="showLogTab"> <span data-i18n="commLog">通信日志</span></label>
+                <button class="ghost small collapse-btn" id="expertToggle" title="Collapse / expand">▲</button>
+              </span>
+            </h2>
+            <div id="expertBody" class="collapse-body">
+              <div class="tabpane" data-pane="write">
+                <div class="form-grid">
+                  <label data-i18n="function">功能码</label>
+                  <select id="wrFc">
+                    <option value="06" selected data-i18n-opt="fc06">06 写单寄存器</option>
+                    <option value="05" data-i18n-opt="fc05">05 写单线圈</option>
+                    <option value="10" data-i18n-opt="fc10">10 写多寄存器</option>
+                    <option value="0F" data-i18n-opt="fc0f">0F 写多线圈</option>
+                  </select>
+                  <label data-i18n="slaveId">从机地址</label><input type="number" id="wrSlave" value="1" min="1" max="247">
+                  <label data-i18n="address">地址</label><input type="number" id="wrAddr" value="0" min="0" max="65535">
+                  <label data-i18n="value">值</label><input type="text" id="wrVal" value="100" placeholder="100 / ON / 100,200 / 1011">
+                </div>
+                <div class="row-btns">
+                  <button id="wrBtn" data-i18n="sendWrite">发送写入</button>
+                </div>
+                <p class="hint" style="margin-top:6px" data-i18n="writeHint">06:十进制 &nbsp;05:ON/OFF &nbsp;10:逗号分隔 &nbsp;0F:位串</p>
+              </div>
+              <div class="tabpane" data-pane="debug" hidden>
+                <div class="tool-row">
+                  <input type="text" id="rawInput" placeholder="01 03 00 00 00 01">
+                  <button class="ghost small" id="rawSendBtn" data-i18n="send">发送</button>
+                </div>
+                <div class="tool-row" style="margin-top:6px">
+                  <input type="text" id="crcInput" data-i18n-ph="crcPh">
+                </div>
+                <div id="crcOut"></div>
+                <p class="hint" style="margin-top:6px" data-i18n="debugHint">使用原始帧前请停止轮询</p>
+              </div>
+              <div class="tabpane" data-pane="hex" id="hexPane" hidden>
+                <div id="dataTableWrap" style="height:200px;">
+                  <div class="placeholder" data-i18n="hexPlaceholder">启动轮询后此处显示从机数据</div>
+                </div>
+              </div>
+              <div class="tabpane" data-pane="log" id="logPane" hidden>
+                <div class="log-ctrl">
+                  <label style="font-size:11px;color:var(--muted)"><input type="checkbox" id="autoScroll" checked> <span data-i18n="autoScroll">自动滚动</span></label>
+                  <button class="ghost small" id="clearLogBtn" data-i18n="clear">清空</button>
+                </div>
+                <div id="logArea"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card inner-card">
+            <h2 data-i18n="commStats">通信统计</h2>
+            <div class="stats-bar">
+              <span><span data-i18n="requests">请求</span> <b id="stReq">0</b></span>
+              <span><span data-i18n="ok">成功</span> <b id="stOk">0</b></span>
+              <span><span data-i18n="timeouts">超时</span> <b class="bad" id="stTimeout">0</b></span>
+              <span><span data-i18n="crcErrors">CRC错误</span> <b class="bad" id="stCrc">0</b></span>
+              <span><span data-i18n="exceptions">异常应答</span> <b class="bad" id="stExc">0</b></span>
+              <span>TX <b id="stTx">0</b>B</span>
+              <span>RX <b id="stRx">0</b>B</span>
+              <span><span data-i18n="lastRtt">耗时</span> <b id="stRtt">--</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tp-pane" id="tpWifi" hidden>
+        <div class="form-grid tp-grid">
+          <label>SSID</label><input type="text" id="wifiSsid" value="Centaurus-AP" placeholder="Centaurus-XXXX">
+          <label data-i18n="host">主机</label><input type="text" id="wifiHost" value="192.168.4.1">
+          <label data-i18n="port2">端口</label><input type="number" id="wifiPort" value="8090" min="1" max="65535">
+        </div>
+        <div class="row-btns">
+          <button class="ghost small" id="wifiScanBtn" data-i18n="wifiScan">扫描网络</button>
+          <button class="ghost small" id="wifiTestBtn" data-i18n="testConn">测试连接</button>
+          <button id="connectBtnWifi" data-i18n="connect">连接</button>
+          <button class="stop" id="disconnectBtnWifi" disabled data-i18n="disconnect">断开</button>
+        </div>
+        <div class="tp-extra">
+          <div class="card inner-card">
+            <h2><span data-i18n="pollingConfig">轮询配置</span> <span class="sub" id="pollStateWifi" data-i18n="stopped">已停止</span></h2>
+            <div class="form-grid">
+              <label data-i18n="interval">轮询间隔</label>
+              <span><input type="number" id="intervalWifi" value="100" min="20" step="10"> ms</span>
+              <label data-i18n="timeout">超时</label>
+              <span><input type="number" id="timeoutWifi" value="100" min="50" step="10"> ms</span>
+            </div>
+            <div class="row-btns">
+              <button id="pollBtnWifi" data-i18n="startPolling">启动轮询</button>
+              <button class="ghost" id="onceBtnWifi" data-i18n="readOnce">读一次</button>
+            </div>
+          </div>
+          <div class="card inner-card">
+            <h2 data-i18n="wifiMon">WiFi 监测</h2>
+            <div class="stats-bar">
+              <span>RSSI <b id="wifiRssi">--</b> dBm</span>
+              <span><span data-i18n="netStatus">网络状态</span> <b id="wifiState">--</b></span>
+              <span><span data-i18n="ipAddr">IP 地址</span> <b id="wifiIp">--</b></span>
+            </div>
+          </div>
+          <div class="card inner-card">
+            <h2><span data-i18n="rawComm">原始通信</span>
+              <button class="ghost small" id="clearWifiRawBtn" data-i18n="clear">清空</button>
+            </h2>
+            <div id="wifiRawLog" class="raw-log"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tp-pane" id="tpBle" hidden>
+        <div class="form-grid tp-grid">
+          <label data-i18n="device">设备</label>
+          <span><select id="bleDeviceSel" style="min-width: 160px;"><option value="-1" data-i18n="scanFirst">请先搜索</option></select></span>
+        </div>
+        <div class="row-btns">
+          <button class="ghost small" id="bleScanBtn" data-i18n="bleScan">搜索蓝牙设备</button>
+          <button id="connectBtnBle" data-i18n="connect">连接</button>
+          <button class="stop" id="disconnectBtnBle" disabled data-i18n="disconnect">断开</button>
+        </div>
+        <div class="tp-extra">
+          <div class="card inner-card">
+            <h2><span data-i18n="pollingConfig">轮询配置</span> <span class="sub" id="pollStateBle" data-i18n="stopped">已停止</span></h2>
+            <div class="form-grid">
+              <label data-i18n="interval">轮询间隔</label>
+              <span><input type="number" id="intervalBle" value="100" min="20" step="10"> ms</span>
+              <label data-i18n="timeout">超时</label>
+              <span><input type="number" id="timeoutBle" value="100" min="50" step="10"> ms</span>
+            </div>
+            <div class="row-btns">
+              <button id="pollBtnBle" data-i18n="startPolling">启动轮询</button>
+              <button class="ghost" id="onceBtnBle" data-i18n="readOnce">读一次</button>
+            </div>
+          </div>
+          <div class="card inner-card">
+            <h2 data-i18n="bleMon">BLE 监测</h2>
+            <div class="stats-bar">
+              <span>RSSI <b id="bleRssi">--</b> dBm</span>
+              <span><span data-i18n="connInt">连接间隔</span> <b id="bleIntv">--</b></span>
+              <span>MTU <b id="bleMtu">--</b></span>
+              <span><span data-i18n="linkState">链路状态</span> <b id="bleState">--</b></span>
+            </div>
+          </div>
+          <div class="card inner-card">
+            <h2><span data-i18n="rawComm">原始通信</span>
+              <button class="ghost small" id="clearBleRawBtn" data-i18n="clear">清空</button>
+            </h2>
+            <div id="bleRawLog" class="raw-log"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right column -->
+  <div class="col-right">
+    <div class="card" style="display:flex; flex-direction:column; min-height:0;">
+      <h2><span data-i18n="liveData">实时数据</span> <span class="sub" id="dataInfo" data-i18n="waiting">等待轮询…</span></h2>
+      <div id="liveWrap" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto;">
+        <div style="display:flex; gap:8px; min-height:0;">
+          <div id="decodePanel" class="decode-panel">
+            <div class="io-tile">
+              <div class="io-head">PIN 2 <span class="io-sub">0x0000.L</span></div>
+              <div class="io-body pin" id="dPin2"><span class="io-val">--</span><span class="io-mode">--</span></div>
+            </div>
+            <div class="io-tile">
+              <div class="io-head">PIN 4 <span class="io-sub">0x0000.H</span></div>
+              <div class="io-body pin" id="dPin4"><span class="io-val">--</span><span class="io-mode">--</span></div>
+            </div>
+            <div class="io-tile">
+              <div class="io-head">PIN 5 <span class="io-sub">0x0001.L</span></div>
+              <div class="io-body pin" id="dPin5"><span class="io-val">--</span><span class="io-mode">--</span></div>
+            </div>
+            <div class="io-tile">
+              <div class="io-head">PERCENT <span class="io-sub">0x0002</span></div>
+              <div class="io-body" id="dPct"><span class="io-val">--</span><span class="io-mode">--</span></div>
+            </div>
+            <div class="io-tile">
+              <div class="io-head">CAPACITANCE <span class="io-sub">0x0006-7</span></div>
+              <div class="io-body" id="dCap"><span class="io-val">--</span><span class="io-mode">--</span></div>
+            </div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px; min-width:0;">
+            <div class="chart-box">
+              <div class="chart-title"><span data-i18n="percentage">百分比</span> <span class="sub" id="pctLast">--</span></div>
+              <canvas id="pctChart"></canvas>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title"><span data-i18n="capacitance">电容值</span> <span class="sub" id="capLast">--</span></div>
+              <canvas id="capChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span data-i18n="calibration">校准</span> <span class="sub hint-item" data-i18n="fc06Sub">FC06 写单寄存器 (HEX)</span></h2>
+      <div class="cal-columns">
+        <div class="cal-group cal-low">
+          <div class="cal-head">
+            <span class="cal-title" data-i18n="lowCal">低点校准</span>
+            <span class="cal-reg" data-i18n="reg100">寄存器 100</span>
+          </div>
+          <div class="cal-set">
+            <label data-i18n="setpoint">设定值</label>
+            <input type="text" id="calLowVal" value="0" readonly>
+          </div>
+          <div class="cal-quick">
+            <button data-target="calLowVal" data-val="0">0%</button>
+            <button data-target="calLowVal" data-val="5">5%</button>
+            <button data-target="calLowVal" data-val="10">10%</button>
+            <button data-target="calLowVal" data-val="15">15%</button>
+            <button data-target="calLowVal" data-val="20">20%</button>
+            <button data-target="calLowVal" data-val="25">25%</button>
+          </div>
+          <button class="cal" id="calLowBtn"><span class="cal-name" data-i18n="runLowCal">执行低点校准</span></button>
+        </div>
+        <div class="cal-group cal-high">
+          <div class="cal-head">
+            <span class="cal-title" data-i18n="highCal">高点校准</span>
+            <span class="cal-reg" data-i18n="reg101">寄存器 101</span>
+          </div>
+          <div class="cal-set">
+            <label data-i18n="setpoint">设定值</label>
+            <input type="text" id="calHighVal" value="100" readonly>
+          </div>
+          <div class="cal-quick">
+            <button data-target="calHighVal" data-val="40">40%</button>
+            <button data-target="calHighVal" data-val="50">50%</button>
+            <button data-target="calHighVal" data-val="60">60%</button>
+            <button data-target="calHighVal" data-val="70">70%</button>
+            <button data-target="calHighVal" data-val="80">80%</button>
+            <button data-target="calHighVal" data-val="90">90%</button>
+            <button data-target="calHighVal" data-val="100">100%</button>
+          </div>
+          <button class="cal" id="calHighBtn"><span class="cal-name" data-i18n="runHighCal">执行高点校准</span></button>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:8px" data-i18n="calHint">设定值以十六进制发送: 0-100% → 0x00-0x64</p>
+    </div>
+
+    <div class="card">
+      <h2>PIN SET <span class="sub hint-item" data-i18n="pinsetSub">Pin2 / Pin4 / Pin5 配置 (FC06)</span></h2>
+      <div class="pinset-columns">
+        <div class="pinset-col pin-col2">
+          <div class="pin-col-title">PIN 2</div>
+          <div class="pinset-grid v">
+            <label class="pinset-lbl"><span data-i18n="function">功能</span> <span class="reg-tag">Reg 102</span></label>
+            <select id="pin2Func">
+              <option value="0" selected data-i18n-opt="npn">0 · NPN</option>
+              <option value="1" data-i18n-opt="pnp">1 · PNP</option>
+              <option value="2" data-i18n-opt="pushpull">2 · Push-Pull</option>
+              <option value="3" data-i18n-opt="currentOut">3 · 电流输出 4-20mA</option>
+              <option value="4" data-i18n-opt="voltageOut">4 · 电压输出 0-10V</option>
+              <option value="5" data-i18n-opt="inputAh">5 · 输入 (高有效)</option>
+            </select>
+          </div>
+          <div id="pin2OutBlock">
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outFunction">输出功能</span> <span class="reg-tag">Reg 103</span></label>
+              <select id="pin2OutFn">
+                <option value="0" selected>0 · NO</option>
+                <option value="1">1 · NC</option>
+              </select>
+            </div>
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outSetPoint">输出设定值</span> <span class="reg-tag">Reg 104</span></label>
+              <span class="pinset-unit"><input type="number" id="pin2SetPt" value="50" min="0" max="100"> %</span>
+            </div>
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outHyst">输出迟滞</span> <span class="reg-tag">Reg 105</span></label>
+              <span class="pinset-unit"><input type="number" id="pin2Hyst" value="5" min="0" max="100"> %</span>
+            </div>
+          </div>
+          <div class="row-btns">
+            <button id="pin2SetBtn" data-i18n="applyPin2">应用 Pin2</button>
+          </div>
+        </div>
+        <div class="pinset-col pin-col4">
+          <div class="pin-col-title">PIN 4</div>
+          <div class="pinset-grid v">
+            <label class="pinset-lbl"><span data-i18n="function">功能</span> <span class="reg-tag">Reg 106</span></label>
+            <select id="pin4Func">
+              <option value="0" selected data-i18n-opt="npn">0 · NPN</option>
+              <option value="1" data-i18n-opt="pnp">1 · PNP</option>
+              <option value="2" data-i18n-opt="pushpull">2 · Push-Pull</option>
+            </select>
+          </div>
+          <div id="pin4OutBlock">
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outFunction">输出功能</span> <span class="reg-tag">Reg 107</span></label>
+              <select id="pin4OutFn">
+                <option value="0" selected>0 · NO</option>
+                <option value="1">1 · NC</option>
+              </select>
+            </div>
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outSetPoint">输出设定值</span> <span class="reg-tag">Reg 108</span></label>
+              <span class="pinset-unit"><input type="number" id="pin4SetPt" value="50" min="0" max="100"> %</span>
+            </div>
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outHyst">输出迟滞</span> <span class="reg-tag">Reg 109</span></label>
+              <span class="pinset-unit"><input type="number" id="pin4Hyst" value="5" min="0" max="100"> %</span>
+            </div>
+          </div>
+          <div class="row-btns">
+            <button id="pin4SetBtn" data-i18n="applyPin4">应用 Pin4</button>
+          </div>
+        </div>
+        <div class="pinset-col pin-col5">
+          <div class="pin-col-title">PIN 5</div>
+          <div class="pinset-grid v">
+            <label class="pinset-lbl"><span data-i18n="function">功能</span> <span class="reg-tag">Reg 110</span></label>
+            <select id="pin5Func">
+              <option value="0" selected data-i18n-opt="npn">0 · NPN</option>
+              <option value="1" data-i18n-opt="pnp">1 · PNP</option>
+              <option value="2" data-i18n-opt="pushpull">2 · Push-Pull</option>
+              <option value="5" data-i18n-opt="inputAh">5 · 输入 (高有效)</option>
+            </select>
+          </div>
+          <div id="pin5OutBlock">
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outFunction">输出功能</span> <span class="reg-tag">Reg 111</span></label>
+              <select id="pin5OutFn">
+                <option value="0" selected>0 · NO</option>
+                <option value="1">1 · NC</option>
+              </select>
+            </div>
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outSetPoint">输出设定值</span> <span class="reg-tag">Reg 112</span></label>
+              <span class="pinset-unit"><input type="number" id="pin5SetPt" value="50" min="0" max="100"> %</span>
+            </div>
+            <div class="pinset-grid v">
+              <label class="pinset-lbl"><span data-i18n="outHyst">输出迟滞</span> <span class="reg-tag">Reg 113</span></label>
+              <span class="pinset-unit"><input type="number" id="pin5Hyst" value="5" min="0" max="100"> %</span>
+            </div>
+          </div>
+          <div class="row-btns">
+            <button id="pin5SetBtn" data-i18n="applyPin5">应用 Pin5</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:6px" data-i18n="pinsetHint">输出选项仅在功能为 NPN / PNP / Push-Pull 时有效</p>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ================= Basics ================= */
+const $ = id => document.getElementById(id);
+let ports = [];              // authorized serial ports
+let polling = false;
+let waiter = null;          // current transaction awaiting response
+let rxBuf = [];             // receive byte buffer
+const stats = { req:0, ok:0, timeout:0, crc:0, exc:0, tx:0, rx:0, rtt:null };
+let lastValues = [];        // previous poll values (change highlight)
+
+const FC_NAME = { 1:'读线圈', 2:'读离散输入', 3:'读保持寄存器', 4:'读输入寄存器',
+                  5:'写单线圈', 6:'写单寄存器', 15:'写多线圈', 16:'写多寄存器' };
+const EXC_NAME = { 1:'非法功能码', 2:'非法数据地址', 3:'非法数据值', 4:'从机故障', 6:'忙', 8:'校验错误' };
+
+/* ================= i18n ================= */
+const I18N = {
+  zh: {
+    port: '串口', clickRefresh: '点击"获取串口"', refreshPorts: '获取串口', addNewPort: '添加新串口',
+    transport: '通信方式', trSerial: '串口 USB', trWifi: 'WiFi', trBle: '蓝牙 BLE', connection: '通信连接',
+    wifiMon: 'WiFi 监测', bleMon: 'BLE 监测', netStatus: '网络状态', ipAddr: 'IP 地址',
+    connInt: '连接间隔', linkState: '链路状态',
+    wifiScan: '扫描网络', bleScan: '搜索蓝牙设备', scanFirst: '请先搜索', host: '主机', port2: '端口', device: '设备',
+    testConn: '测试连接',
+    rawComm: '原始通信',
+    envCheck: '环境检测', envAvailable: '可用', envUnavailable: '不可用', envCond: '有条件',
+    envRecommend: '推荐使用', envSecureOk: '安全上下文', envSecureNo: '非安全上下文 (HTTP)',
+    envInIframe: '嵌入在 iframe 中', envTopPage: '独立页面',
+    envNeedSecure: '需要 HTTPS 或 localhost',
+    envNoSerialApi: '当前浏览器不支持 Web Serial',
+    envNoBleApi: '当前浏览器不支持 Web Bluetooth',
+    envIframeAllow: '父页 iframe 需声明 allow="serial; bluetooth"',
+    envMixedWs: 'HTTPS 页面禁止 ws:// 混合内容，WiFi 需用 http://localhost 或 wss',
+    envWifiRoute: '需先连接设备热点 Centaurus-AP，且页面主机可路由到设备 IP',
+    envCsp: '宿主页面 CSP 禁止该连接，需改用其他部署方式（如 http://localhost）',
+    envTrSerial: '串口 USB', envTrWifi: 'WiFi', envTrBle: '蓝牙 BLE',
+    notImplemented: '功能预留：当前固件尚未实现该通信方式',
+    baud: '波特率', parity: '校验', stopBits: '停止位', connect: '连接', disconnect: '断开',
+    none: '无', even: '偶', odd: '奇',
+    pollingConfig: '轮询配置', stopped: '已停止', polling: '轮询中…',
+    slaveId: '从机地址', function: '功能', startAddr: '起始地址', quantity: '数据量',
+    interval: '轮询间隔', timeout: '超时', startPolling: '启动轮询', stopPolling: '停止轮询', readOnce: '读一次',
+    fc03: '03 读保持寄存器', fc04: '04 读输入寄存器', fc01: '01 读线圈', fc02: '02 读离散输入',
+    expertTools: '专家工具', write: '写入', debug: '调试', hexTable: 'HEX数据表', commLog: '通信日志',
+    address: '地址', value: '值', sendWrite: '发送写入', send: '发送',
+    writeHint: '06:十进制 &nbsp;05:ON/OFF &nbsp;10:逗号分隔 &nbsp;0F:位串',
+    debugHint: '使用原始帧前请停止轮询', crcPh: 'CRC 计算: 输入不含CRC的HEX',
+    hexPlaceholder: '启动轮询后此处显示从机数据', autoScroll: '自动滚动', clear: '清空',
+    commStats: '通信统计', requests: '请求', ok: '成功', timeouts: '超时', crcErrors: 'CRC错误',
+    exceptions: '异常应答', lastRtt: '耗时',
+    liveData: '实时数据', waiting: '等待轮询…', percentage: '百分比', capacitance: '电容值',
+    calibration: '校准', fc06Sub: 'FC06 写单寄存器 (HEX)',
+    lowCal: '低点校准', highCal: '高点校准', reg100: '寄存器 100', reg101: '寄存器 101',
+    setpoint: '设定值', runLowCal: '执行低点校准', runHighCal: '执行高点校准',
+    calHint: '设定值以十六进制发送: 0-100% → 0x00-0x64',
+    pinsetSub: 'Pin2 / Pin4 / Pin5 配置 (FC06)', npn: '0 · NPN', pnp: '1 · PNP', pushpull: '2 · Push-Pull',
+    currentOut: '3 · 电流输出 4-20mA', voltageOut: '4 · 电压输出 0-10V', inputAh: '5 · 输入 (高有效)',
+    outFunction: '输出功能', outSetPoint: '输出设定值', outHyst: '输出迟滞',
+    applyPin2: '应用 Pin2', applyPin4: '应用 Pin4', applyPin5: '应用 Pin5',
+    pinsetHint: '输出选项仅在功能为 NPN / PNP / Push-Pull 时有效',
+    connText: '串口未连接', connected: '已连接 @ ', unplugged: '设备已拔出'
+  },
+  en: {
+    port: 'Port', clickRefresh: 'Click "Refresh Ports"', refreshPorts: 'Refresh Ports', addNewPort: 'Add New Port',
+    transport: 'Transport', trSerial: 'Serial USB', trWifi: 'WiFi', trBle: 'Bluetooth BLE', connection: 'Connection',
+    wifiMon: 'WiFi Monitor', bleMon: 'BLE Monitor', netStatus: 'Network status', ipAddr: 'IP address',
+    connInt: 'Conn. interval', linkState: 'Link state',
+    wifiScan: 'Scan Networks', bleScan: 'Scan BLE Devices', scanFirst: 'Scan first', host: 'Host', port2: 'Port', device: 'Device',
+    testConn: 'Test Connection',
+    rawComm: 'Raw Comm',
+    envCheck: 'Environment Check', envAvailable: 'Available', envUnavailable: 'Unavailable', envCond: 'Conditional',
+    envRecommend: 'Recommended', envSecureOk: 'Secure context', envSecureNo: 'Insecure context (HTTP)',
+    envInIframe: 'Embedded in iframe', envTopPage: 'Top-level page',
+    envNeedSecure: 'requires HTTPS or localhost',
+    envNoSerialApi: 'browser does not support Web Serial',
+    envNoBleApi: 'browser does not support Web Bluetooth',
+    envIframeAllow: 'parent iframe needs allow="serial; bluetooth"',
+    envMixedWs: 'HTTPS page blocks ws:// mixed content; use http://localhost or wss for WiFi',
+    envWifiRoute: 'join the device hotspot Centaurus-AP first, and the page host must route to the device IP',
+    envCsp: 'blocked by host page CSP; deploy differently (e.g. http://localhost)',
+    envTrSerial: 'Serial USB', envTrWifi: 'WiFi', envTrBle: 'Bluetooth BLE',
+    notImplemented: 'Reserved: this transport is not implemented in firmware yet',
+    baud: 'Baud', parity: 'Parity', stopBits: 'Stop bits', connect: 'Connect', disconnect: 'Disconnect',
+    none: 'None', even: 'Even', odd: 'Odd',
+    pollingConfig: 'Polling Config', stopped: 'Stopped', polling: 'Polling…',
+    slaveId: 'Slave ID', function: 'Function', startAddr: 'Start Addr', quantity: 'Quantity',
+    interval: 'Interval', timeout: 'Timeout', startPolling: 'Start Polling', stopPolling: 'Stop Polling', readOnce: 'Read Once',
+    fc03: '03 Read Holding Registers', fc04: '04 Read Input Registers', fc01: '01 Read Coils', fc02: '02 Read Discrete Inputs',
+    expertTools: 'Expert Tools', write: 'Write', debug: 'Debug', hexTable: 'HEX Table', commLog: 'Comm Log',
+    address: 'Address', value: 'Value', sendWrite: 'Send Write', send: 'Send',
+    writeHint: '06: decimal &nbsp;05: ON/OFF &nbsp;10: comma separated &nbsp;0F: bit string',
+    debugHint: 'Stop polling before using raw frames', crcPh: 'CRC calculator: enter HEX without CRC',
+    hexPlaceholder: 'Slave data will be shown here once polling starts', autoScroll: 'Auto-scroll', clear: 'Clear',
+    commStats: 'Communication Stats', requests: 'Requests', ok: 'OK', timeouts: 'Timeouts', crcErrors: 'CRC errors',
+    exceptions: 'Exceptions', lastRtt: 'Last RTT',
+    liveData: 'Live Data', waiting: 'Waiting for polling…', percentage: 'Percentage', capacitance: 'Capacitance',
+    calibration: 'Calibration', fc06Sub: 'FC06 Write Single Register (HEX)',
+    lowCal: 'Low-point Calibration', highCal: 'High-point Calibration', reg100: 'Register 100', reg101: 'Register 101',
+    setpoint: 'Setpoint', runLowCal: 'Run Low-point Calibration', runHighCal: 'Run High-point Calibration',
+    calHint: 'Setpoint is sent as hex: 0-100% → 0x00-0x64',
+    pinsetSub: 'Pin2 / Pin4 / Pin5 configuration (FC06)', npn: '0 · NPN', pnp: '1 · PNP', pushpull: '2 · Push-Pull',
+    currentOut: '3 · Current Output 4-20mA', voltageOut: '4 · Voltage Output 0-10V', inputAh: '5 · Input (active high)',
+    outFunction: 'Output Function', outSetPoint: 'Output Set Point', outHyst: 'Output Hysteresis',
+    applyPin2: 'Apply Pin2', applyPin4: 'Apply Pin4', applyPin5: 'Apply Pin5',
+    pinsetHint: 'Output options apply only when Function is NPN / PNP / Push-Pull',
+    connText: 'Serial disconnected', connected: 'Connected @ ', unplugged: 'Device unplugged'
+  },
+  de: {
+    port: 'Schnittstelle', clickRefresh: '"Ports aktualisieren" klicken', refreshPorts: 'Ports aktualisieren', addNewPort: 'Neuen Port hinzufügen',
+    transport: 'Übertragung', trSerial: 'Seriell USB', trWifi: 'WiFi', trBle: 'Bluetooth BLE', connection: 'Verbindung',
+    wifiMon: 'WiFi-Überwachung', bleMon: 'BLE-Überwachung', netStatus: 'Netzwerkstatus', ipAddr: 'IP-Adresse',
+    connInt: 'Verbindungsintervall', linkState: 'Verbindungsstatus',
+    wifiScan: 'Netzwerke suchen', bleScan: 'BLE-Geräte suchen', scanFirst: 'Zuerst suchen', host: 'Host', port2: 'Port', device: 'Gerät',
+    testConn: 'Verbindung testen',
+    rawComm: 'Roh-Kommunikation',
+    envCheck: 'Umgebungsprüfung', envAvailable: 'Verfügbar', envUnavailable: 'Nicht verfügbar', envCond: 'Bedingt',
+    envRecommend: 'Empfohlen', envSecureOk: 'Sicherer Kontext', envSecureNo: 'Unsicherer Kontext (HTTP)',
+    envInIframe: 'In iframe eingebettet', envTopPage: 'Eigenständige Seite',
+    envNeedSecure: 'erfordert HTTPS oder localhost',
+    envNoSerialApi: 'Browser unterstützt kein Web Serial',
+    envNoBleApi: 'Browser unterstützt kein Web Bluetooth',
+    envIframeAllow: 'Übergeordnetes iframe braucht allow="serial; bluetooth"',
+    envMixedWs: 'HTTPS-Seite blockiert ws:// (Mixed Content); WiFi über http://localhost oder wss',
+    envWifiRoute: 'zuerst mit Geräte-Hotspot Centaurus-AP verbinden, und der Seitenhost muss die Geräte-IP erreichen',
+    envCsp: 'durch CSP der Hostseite blockiert; anders bereitstellen (z. B. http://localhost)',
+    envTrSerial: 'Seriell USB', envTrWifi: 'WiFi', envTrBle: 'Bluetooth BLE',
+    notImplemented: 'Reserviert: Diese Übertragungsart ist in der Firmware noch nicht implementiert',
+    baud: 'Baudrate', parity: 'Parität', stopBits: 'Stoppbits', connect: 'Verbinden', disconnect: 'Trennen',
+    none: 'Keine', even: 'Gerade', odd: 'Ungerade',
+    pollingConfig: 'Polling-Konfiguration', stopped: 'Gestoppt', polling: 'Polling…',
+    slaveId: 'Slave-ID', function: 'Funktion', startAddr: 'Startadresse', quantity: 'Anzahl',
+    interval: 'Intervall', timeout: 'Zeitüberschreitung', startPolling: 'Polling starten', stopPolling: 'Polling stoppen', readOnce: 'Einmal lesen',
+    fc03: '03 Holding Register lesen', fc04: '04 Input Register lesen', fc01: '01 Coils lesen', fc02: '02 Diskrete Eingänge lesen',
+    expertTools: 'Expertenwerkzeuge', write: 'Schreiben', debug: 'Debug', hexTable: 'HEX-Tabelle', commLog: 'Komm.-Log',
+    address: 'Adresse', value: 'Wert', sendWrite: 'Schreiben senden', send: 'Senden',
+    writeHint: '06: Dezimal &nbsp;05: ON/OFF &nbsp;10: Komma-getrennt &nbsp;0F: Bitfolge',
+    debugHint: 'Vor Rohrahmen Polling stoppen', crcPh: 'CRC-Rechner: HEX ohne CRC eingeben',
+    hexPlaceholder: 'Slave-Daten werden nach Polling-Start angezeigt', autoScroll: 'Auto-Scroll', clear: 'Löschen',
+    commStats: 'Kommunikationsstatistik', requests: 'Anfragen', ok: 'OK', timeouts: 'Timeouts', crcErrors: 'CRC-Fehler',
+    exceptions: 'Ausnahmen', lastRtt: 'Letzte RTT',
+    liveData: 'Live-Daten', waiting: 'Warte auf Polling…', percentage: 'Prozentwert', capacitance: 'Kapazität',
+    calibration: 'Kalibrierung', fc06Sub: 'FC06 Einzelregister schreiben (HEX)',
+    lowCal: 'Tiefpunktkalibrierung', highCal: 'Hochpunktkalibrierung', reg100: 'Register 100', reg101: 'Register 101',
+    setpoint: 'Sollwert', runLowCal: 'Tiefpunktkalibrierung starten', runHighCal: 'Hochpunktkalibrierung starten',
+    calHint: 'Sollwert wird hexadezimal gesendet: 0-100% → 0x00-0x64',
+    pinsetSub: 'Pin2 / Pin4 / Pin5 Konfiguration (FC06)', npn: '0 · NPN', pnp: '1 · PNP', pushpull: '2 · Push-Pull',
+    currentOut: '3 · Stromausgang 4-20mA', voltageOut: '4 · Spannungsausgang 0-10V', inputAh: '5 · Eingang (High-aktiv)',
+    outFunction: 'Ausgangsfunktion', outSetPoint: 'Ausgangs-Sollwert', outHyst: 'Ausgangs-Hysterese',
+    applyPin2: 'Pin2 anwenden', applyPin4: 'Pin4 anwenden', applyPin5: 'Pin5 anwenden',
+    pinsetHint: 'Ausgangsoptionen nur bei NPN / PNP / Push-Pull',
+    connText: 'Seriell getrennt', connected: 'Verbunden @ ', unplugged: 'Gerät getrennt'
+  }
+};
+
+let curLang = 'zh';
+
+function t(key) { return (I18N[curLang] && I18N[curLang][key]) || (I18N.en[key] !== undefined ? I18N.en[key] : key); }
+
+function applyLang(lang) {
+  if (!I18N[lang]) return;
+  curLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-opt]').forEach(el => { el.textContent = t(el.dataset.i18nOpt); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+  /* refresh dynamic texts */
+  if (!tp().isConnected()) $('connText').textContent = t('connText');
+  setPollUI(polling);
+  if ($('envCard')) renderEnv();
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ================= Logging ================= */
+function ts() {
+  const d = new Date();
+  return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+}
+function log(parts) {
+  const area = $('logArea');
+  const line = document.createElement('div');
+  for (const [text, cls] of parts) {
+    const s = document.createElement('span');
+    if (cls) s.className = cls;
+    s.textContent = text;
+    line.appendChild(s);
+  }
+  area.appendChild(line);
+  while (area.childNodes.length > 800) area.removeChild(area.firstChild);
+  if ($('autoScroll').checked) area.scrollTop = area.scrollHeight;
+}
+function logFrame(dir, frame, note, noteCls) {
+  const hex = Array.from(frame).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  const parts = [['[' + ts() + '] ', 'ts'], [dir === 'tx' ? 'TX ' : 'RX ', dir === 'tx' ? 'dir-tx' : 'dir-rx'], [hex, 'hex']];
+  if (note) parts.push(['   ' + note, noteCls || 'info']);
+  log(parts);
+}
+function logMsg(text, cls) { log([['[' + ts() + '] ', 'ts'], [text, cls || 'info']]); }
+
+/* Per-transport raw communication log (WiFi / BLE). Curated into each tp-pane. */
+const RAW_LOG_IDS = { wifi: 'wifiRawLog', ble: 'bleRawLog' };
+const RAW_COALESCE_MS = 30;   /* merge BLE notification fragments arriving back-to-back into one RX line */
+const rawPend = { bytes: [], timer: null };
+
+function rawRender(dir, bytes, note) {
+  const id = RAW_LOG_IDS[curTransport];
+  if (!id) return;
+  const area = $(id);
+  const line = document.createElement('div');
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+  const ts_el = document.createElement('span'); ts_el.className = 'ts'; ts_el.textContent = '[' + ts() + '] ';
+  const d_el = document.createElement('span'); d_el.className = dir === 'tx' ? 'dir-tx' : 'dir-rx'; d_el.textContent = dir === 'tx' ? 'TX ' : 'RX ';
+  const h_el = document.createElement('span'); h_el.className = 'hex'; h_el.textContent = hex;
+  line.appendChild(ts_el); line.appendChild(d_el); line.appendChild(h_el);
+  if (note) { const n = document.createElement('span'); n.className = 'info'; n.textContent = '   ' + note; line.appendChild(n); }
+  area.appendChild(line);
+  while (area.childNodes.length > 400) area.removeChild(area.firstChild);
+  area.scrollTop = area.scrollHeight;
+}
+function flushRawPend() {
+  if (rawPend.timer) { clearTimeout(rawPend.timer); rawPend.timer = null; }
+  if (rawPend.bytes.length) {
+    const bytes = Uint8Array.from(rawPend.bytes);
+    rawPend.bytes = [];
+    rawRender('rx', bytes);
+  }
+}
+function rawLog(dir, bytes, note) {
+  if (dir === 'rx') {
+    for (const b of bytes) rawPend.bytes.push(b);
+    if (rawPend.timer) clearTimeout(rawPend.timer);
+    rawPend.timer = setTimeout(flushRawPend, RAW_COALESCE_MS);
+    return;
+  }
+  flushRawPend();   /* preserve order: flush pending RX before rendering TX */
+  rawRender(dir, bytes, note);
+}
+function bindRawClear() {
+  if ($('clearWifiRawBtn')) $('clearWifiRawBtn').addEventListener('click', () => { $('wifiRawLog').innerHTML = ''; });
+  if ($('clearBleRawBtn')) $('clearBleRawBtn').addEventListener('click', () => { $('bleRawLog').innerHTML = ''; });
+}
+
+/* ================= Modbus ================= */
+function crc16(buf) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i];
+    for (let j = 0; j < 8; j++) crc = (crc & 1) ? (crc >> 1) ^ 0xA001 : crc >> 1;
+  }
+  return crc;
+}
+function withCRC(arr) {
+  const f = Uint8Array.from(arr);
+  const c = crc16(f);
+  return new Uint8Array([...f, c & 0xFF, (c >> 8) & 0xFF]);
+}
+function verifyCRC(f) {
+  if (f.length < 4) return false;
+  const c = crc16(f.subarray(0, f.length - 2));
+  return f[f.length - 2] === (c & 0xFF) && f[f.length - 1] === ((c >> 8) & 0xFF);
+}
+const hex = b => b.toString(16).padStart(2, '0').toUpperCase();
+const bytesToHex = f => Array.from(f).map(hex).join(' ');
+
+/* Build read request */
+function buildReadReq(slave, fc, addr, qty) {
+  return withCRC([slave, fc, (addr >> 8) & 0xFF, addr & 0xFF, (qty >> 8) & 0xFF, qty & 0xFF]);
+}
+/* Parse number: hex with 0x prefix, decimal otherwise */
+function parseNum(s) {
+  s = s.trim();
+  if (/^0x[0-9a-fA-F]+$/.test(s)) return parseInt(s, 16);
+  return parseInt(s, 10);
+}
+
+/* Build write request, returns {frame, desc} or throws */
+function buildWriteReq() {
+  const slave = parseInt($('wrSlave').value, 10);
+  const addr = parseNum($('wrAddr').value);
+  const fc = parseInt($('wrFc').value, 16);
+  const val = $('wrVal').value.trim();
+  if (!(slave >= 1 && slave <= 247)) throw new Error('Slave ID must be 1-247');
+  if (!(addr >= 0 && addr <= 65535)) throw new Error('Address must be 0-65535');
+  if (fc === 5) {
+    const on = /^(on|1|true)$/i.test(val) ? 0xFF00 : (/^(off|0|false)$/i.test(val) ? 0x0000 : NaN);
+    if (isNaN(on)) throw new Error('FC05 value must be ON or OFF');
+    return { frame: withCRC([slave, 5, addr >> 8, addr & 0xFF, on >> 8, on & 0xFF]), desc: `FC05 write coil 0x${addr.toString(16).toUpperCase()} = ${on ? 'ON' : 'OFF'}` };
+  }
+  if (fc === 6) {
+    let v = parseNum(val);
+    if (isNaN(v) || v < 0 || v > 65535) throw new Error('FC06 value must be 0-65535');
+    return { frame: withCRC([slave, 6, addr >> 8, addr & 0xFF, v >> 8, v & 0xFF]), desc: `FC06 write register 0x${addr.toString(16).toUpperCase()} = 0x${v.toString(16).toUpperCase().padStart(4, '0')}` };
+  }
+  if (fc === 16) {
+    const vals = val.split(/[,，\s]+/).filter(Boolean).map(parseNum);
+    if (!vals.length || vals.some(v => isNaN(v) || v < 0 || v > 65535)) throw new Error('FC10 values must be comma separated 0-65535');
+    if (vals.length > 123) throw new Error('FC10 supports max 123 registers');
+    const f = [slave, 16, addr >> 8, addr & 0xFF, vals.length >> 8, vals.length & 0xFF, vals.length * 2];
+    for (const v of vals) f.push(v >> 8, v & 0xFF);
+    return { frame: withCRC(f), desc: `FC10 write registers 0x${addr.toString(16).toUpperCase()}.. = ${vals.map(v => '0x' + v.toString(16).toUpperCase().padStart(4, '0')).join(',')}` };
+  }
+  if (fc === 15) {
+    const bits = val.replace(/[^01]/g, '').split('').map(Number);
+    if (!bits.length || bits.length !== val.replace(/[,，\s]/g, '').length) throw new Error('FC0F value must be a bit string like 1011');
+    if (bits.length > 1968) throw new Error('FC0F supports max 1968 bits');
+    const bc = Math.ceil(bits.length / 8);
+    const f = [slave, 15, addr >> 8, addr & 0xFF, bits.length >> 8, bits.length & 0xFF, bc];
+    for (let i = 0; i < bc; i++) {
+      let b = 0;
+      for (let j = 0; j < 8; j++) if (bits[i * 8 + j]) b |= (1 << j);
+      f.push(b);
+    }
+    return { frame: withCRC(f), desc: `FC0F write coils 0x${addr.toString(16).toUpperCase()}.. = ${bits.join('')}` };
+  }
+  throw new Error('Unsupported function code');
+}
+
+/* Expected response length from buffer head */
+function expectedRespLen(buf) {
+  if (buf.length < 2) return 2;
+  const fc = buf[1] & 0x7F;
+  if (buf[1] & 0x80) return 5;                       // exception response
+  if ([1, 2, 3, 4].includes(fc)) return buf.length < 3 ? 3 : 5 + buf[2];
+  return 8;                                          // write echo
+}
+
+/* ================= Frame dispatch (transport agnostic) ================= */
+/* Idle-gap flush: collect all bytes of an invalid/unsolicited frame before display */
+const RX_IDLE_MS = 100;
+let rxFlushTimer = null;
+
+function scheduleRxFlush() {
+  if (rxFlushTimer) clearTimeout(rxFlushTimer);
+  rxFlushTimer = setTimeout(flushRxBuf, RX_IDLE_MS);
+}
+function cancelRxFlush() {
+  if (rxFlushTimer) { clearTimeout(rxFlushTimer); rxFlushTimer = null; }
+}
+
+function flushRxBuf() {
+  rxFlushTimer = null;
+  if (!rxBuf.length) return;
+  const raw = Uint8Array.from(rxBuf.splice(0));
+  if (waiter) {
+    const w = waiter; waiter = null; clearTimeout(w.timer);
+    w.finish({ type: 'crc', frame: raw });
+  } else {
+    logFrame('rx', raw, '(unsolicited data)');
+    renderRawError(raw, 'Unsolicited data');
+  }
+}
+
+function tryDispatch() {
+  while (waiter && rxBuf.length >= 2) {
+    const need = expectedRespLen(rxBuf);
+    if (rxBuf.length < need) return;              // wait for more bytes; timeout covers
+    const frame = Uint8Array.from(rxBuf.slice(0, need));
+    if (!verifyCRC(frame)) { scheduleRxFlush(); return; }   // invalid: wait idle, show all
+    rxBuf.splice(0, need);
+    const w = waiter; waiter = null; clearTimeout(w.timer); cancelRxFlush();
+    w.finish({ type: 'ok', frame });
+  }
+}
+
+/* Transaction: send request via current transport and await response */
+function transact(frame, timeoutMs) {
+  return new Promise(async resolve => {
+    if (waiter) { resolve({ type: 'busy' }); return; }
+    if (!tp().isConnected()) { resolve({ type: 'sendfail' }); return; }
+    rxBuf.length = 0; cancelRxFlush();
+    let settled = false;
+    const finish = r => { if (settled) return; settled = true; waiter = null; cancelRxFlush(); resolve(r); };
+    waiter = { timer: null, finish };
+    const ok = await tp().write(frame);
+    if (!ok) { finish({ type: 'sendfail' }); return; }
+    logFrame('tx', frame);
+    waiter.timer = setTimeout(() => {
+      const raw = rxBuf.length ? Uint8Array.from(rxBuf.splice(0)) : null;   // keep partial data
+      finish({ type: 'timeout', frame: raw });
+    }, timeoutMs);
+    tryDispatch();
+  });
+}
+
+/* ================= Polling ================= */
+/* Per-transport interval/timeout inputs (serial pane keeps the unsuffixed ids) */
+function pollTimingIds() {
+  return curTransport === 'wifi' ? ['intervalWifi', 'timeoutWifi']
+       : curTransport === 'ble'  ? ['intervalBle', 'timeoutBle']
+       : ['interval', 'timeoutMs'];
+}
+function readPollCfg() {
+  const fc = parseInt($('funcCode').value, 16);
+  const slave = parseInt($('slaveId').value, 10);
+  const addr = parseInt($('startAddr').value, 10);
+  let qty = parseInt($('quantity').value, 10);
+  const maxQty = (fc === 1 || fc === 2) ? 2000 : 125;
+  if (!(slave >= 1 && slave <= 247)) throw new Error('Slave ID must be 1-247');
+  if (!(addr >= 0 && addr <= 65535)) throw new Error('Start address must be 0-65535');
+  if (!(qty >= 1 && qty <= maxQty)) throw new Error(`Quantity must be 1-${maxQty}`);
+  const [intId, toId] = pollTimingIds();
+  return { slave, fc, addr, qty, interval: Math.max(20, parseInt($(intId).value, 10) || 1000),
+           timeout: Math.max(50, parseInt($(toId).value, 10) || 500) };
+}
+
+function handleResult(cfg, res, rtt) {
+  stats.req++;
+  if (res.type === 'ok') {
+    const f = res.frame;
+    if (f[1] & 0x80) {
+      stats.exc++;
+      const code = f[2];
+      logFrame('rx', f, `Exception response: ${EXC_NAME[code] || 'code ' + code}`, 'warn');
+      renderRawError(f, `Exception response: ${EXC_NAME[code] || 'code 0x' + hex(code)}`);
+    } else if ([1, 2, 3, 4].includes(cfg.fc)) {
+      if (f.length !== 5 + f[2]) {
+        logFrame('rx', f, `Length mismatch: byte count 0x${hex(f[2])} but frame is ${f.length}B`, 'warn');
+        renderRawError(f, 'Length mismatch (invalid data)');
+      } else {
+        stats.ok++;
+        const desc = `FC${hex(cfg.fc)} ${FC_NAME[cfg.fc]} · ${rtt}ms`;
+        logFrame('rx', f, res.desc || desc);
+        renderData(cfg, f[2], f.subarray(3, 3 + f[2]));
+      }
+    } else {
+      stats.ok++;
+      logFrame('rx', f, res.desc || 'Write echo');
+    }
+  } else if (res.type === 'timeout') {
+    stats.timeout++;
+    logMsg(`Timeout, no response (${rtt}ms)`, 'err');
+    if (res.frame && res.frame.length) {
+      logFrame('rx', res.frame, '(incomplete response data)', 'warn');
+      renderRawError(res.frame, 'Incomplete response');
+    }
+  }
+  else if (res.type === 'crc') {
+    stats.crc++;
+    logFrame('rx', res.frame, 'CRC check failed / invalid frame', 'err');
+    renderRawError(res.frame, 'CRC check failed');
+  }
+  else if (res.type === 'busy') { logMsg('Previous transaction still in progress', 'warn'); }
+  stats.rtt = rtt;
+  updateStats();
+}
+
+async function pollOnce() {
+  let cfg;
+  try { cfg = readPollCfg(); } catch (e) { logMsg('Config error: ' + e.message, 'err'); return false; }
+  const req = buildReadReq(cfg.slave, cfg.fc, cfg.addr, cfg.qty);
+  const t0 = performance.now();
+  const res = await transact(req, cfg.timeout);
+  handleResult(cfg, res, Math.round(performance.now() - t0));
+  return res.type === 'ok';
+}
+
+async function pollLoop() {
+  logMsg('=== Polling started ===', 'info');
+  while (polling) {
+    const t0 = performance.now();
+    await pollOnce();
+    const wait = Math.max(0, readPollCfgSafe().interval - (performance.now() - t0));
+    await sleep(wait);
+  }
+  logMsg('=== Polling stopped ===', 'info');
+}
+function readPollCfgSafe() { try { return readPollCfg(); } catch (e) { return { interval: 1000 }; } }
+
+function setPollUI(on) {
+  polling = on;
+  for (const id of ['pollBtn', 'pollBtnWifi', 'pollBtnBle']) {
+    const b = $(id); if (!b) continue;
+    b.textContent = on ? t('stopPolling') : t('startPolling');
+    b.classList.toggle('stop', on);
+  }
+  for (const id of ['pollState', 'pollStateWifi', 'pollStateBle']) {
+    const s = $(id); if (s) s.textContent = on ? t('polling') : t('stopped');
+  }
+}
+
+/* Show erroneous / invalid frames in Live Data as raw HEX */
+function renderRawError(frame, reason) {
+  const wrap = $('dataTableWrap');
+  $('dataInfo').textContent = 'Invalid / error data received';
+  wrap.dataset.mode = 'err';
+  const prev = wrap.querySelector('.rawerr');
+  if (prev) prev.remove();
+  const div = document.createElement('div');
+  div.className = 'rawerr';
+  const tag = document.createElement('div');
+  tag.className = 'rawerr-tag';
+  tag.textContent = '⚠ ' + reason;
+  const data = document.createElement('div');
+  data.className = 'rawerr-hex';
+  data.textContent = bytesToHex(frame);
+  div.appendChild(tag); div.appendChild(data);
+  wrap.prepend(div);
+}
+
+/* ================= Data rendering (all HEX) ================= */
+function renderData(cfg, byteCount, data) {
+  const wrap = $('dataTableWrap');
+  $('dataInfo').textContent = `Slave 0x${hex(cfg.slave)} · FC${hex(cfg.fc)} · 0x${cfg.addr.toString(16).toUpperCase()} · ${cfg.qty} items`;
+
+  if (cfg.fc === 3 || cfg.fc === 4) {
+    const vals = [];
+    for (let i = 0; i < cfg.qty; i++) vals.push((data[i * 2] << 8) | data[i * 2 + 1]);
+    let table = wrap.querySelector('table.data');
+    if (!table || wrap.dataset.mode !== 'reg' || +wrap.dataset.base !== cfg.addr || +wrap.dataset.n !== cfg.qty) {
+      wrap.innerHTML = ''; wrap.dataset.mode = 'reg'; wrap.dataset.base = cfg.addr; wrap.dataset.n = cfg.qty;      table = document.createElement('table'); table.className = 'data';
+      table.innerHTML = '<tr><th>Addr (HEX)</th><th>Value (HEX)</th><th>High/Low Bytes</th></tr>';
+      for (let i = 0; i < cfg.qty; i++) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="addr">0x${(cfg.addr + i).toString(16).toUpperCase().padStart(4, '0')}</td>` +
+                       `<td class="val hx"></td><td class="val hl"></td>`;
+        table.appendChild(tr);
+      }
+      wrap.appendChild(table);
+    }
+    const rows = table.rows;
+    for (let i = 0; i < cfg.qty; i++) {
+      const v = vals[i], changed = lastValues[i] !== v;
+      const c = rows[i + 1].cells;
+      c[1].textContent = '0x' + v.toString(16).toUpperCase().padStart(4, '0');
+      c[2].textContent = `${hex(data[i * 2])} ${hex(data[i * 2 + 1])}`;
+      for (const cell of [c[1], c[2]]) {
+        cell.classList.toggle('changed', changed);
+        if (changed) setTimeout(() => cell.classList.remove('changed'), 500);
+      }
+    }
+    lastValues = vals;
+    renderDecode(cfg, vals);
+  } else {
+    const bits = [];
+    for (let i = 0; i < cfg.qty; i++) bits.push((data[i >> 3] >> (i & 7)) & 1);
+    if (wrap.dataset.mode !== 'bit' || +wrap.dataset.base !== cfg.addr || +wrap.dataset.n !== cfg.qty) {
+      wrap.innerHTML = ''; wrap.dataset.mode = 'bit'; wrap.dataset.base = cfg.addr; wrap.dataset.n = cfg.qty;
+      const grid = document.createElement('div'); grid.className = 'bitgrid';
+      for (let r = 0; r < Math.ceil(cfg.qty / 16); r++) {
+        const row = document.createElement('div'); row.className = 'bitrow';
+        row.innerHTML = `<span class="lbl">0x${(cfg.addr + r * 16).toString(16).toUpperCase().padStart(4, '0')}</span>`;
+        for (let g = 0; g < 2; g++) {
+          const grp = document.createElement('div'); grp.className = 'bitgroup';
+          for (let b = 0; b < 8; b++) {
+            const idx = r * 16 + g * 8 + b;
+            if (idx >= cfg.qty) break;
+            const el = document.createElement('div');
+            el.className = 'bit'; el.dataset.idx = idx; el.title = `Address 0x${(cfg.addr + idx).toString(16).toUpperCase()}`;
+            grp.appendChild(el);
+          }
+          row.appendChild(grp);
+        }
+        grid.appendChild(row);
+      }
+      wrap.appendChild(grid);
+    }
+    wrap.querySelectorAll('.bit').forEach(el => {
+      const idx = +el.dataset.idx, v = bits[idx], changed = lastValues[idx] !== v;
+      el.textContent = v;
+      el.classList.toggle('on', !!v);
+      el.classList.toggle('changed', changed);
+      if (changed) setTimeout(() => el.classList.remove('changed'), 500);
+    });
+    lastValues = bits;
+  }
+}
+
+/* ================= Centaurus register decoding ================= */
+const PIN_FN  = { 0:'Output - OFF', 1:'Output - ON', 2:'Output - Analog', 4:'Input - OFF', 5:'Input - ON' };
+const PIN2_FN = PIN_FN;
+
+let decodeCache = {};
+
+function setDecode(id, valueText, modeText, stateClass) {
+  const tile = $(id);
+  if (!tile) return;
+  const valEl = tile.querySelector('.io-val');
+  const modeEl = tile.querySelector('.io-mode');
+  const newVal = valueText, newMode = modeText || '';
+  if (decodeCache[id] !== newVal + '|' + newMode) {
+    valEl.textContent = newVal;
+    modeEl.textContent = newMode;
+    tile.classList.remove('out-on', 'out-off', 'in-on', 'analog');
+    if (stateClass) tile.classList.add(stateClass);
+    tile.classList.add('changed');
+    setTimeout(() => tile.classList.remove('changed'), 500);
+  }
+  decodeCache[id] = newVal + '|' + newMode;
+}
+
+/* Rolling-data line chart on canvas */
+function makeChart(canvasId, color, fmt) {
+  const cv = $(canvasId);
+  const ctx = cv.getContext('2d');
+  const data = [];
+  const MAX = 120;
+  function draw() {
+    const w = cv.width = Math.max(1, cv.clientWidth) * (window.devicePixelRatio || 1);
+    const h = cv.height = Math.max(1, cv.clientHeight) * (window.devicePixelRatio || 1);
+    ctx.clearRect(0, 0, w, h);
+    if (data.length < 2) return;
+    let min = Math.min(...data), max = Math.max(...data);
+    if (max - min < 1e-9) { min -= 1; max += 1; }
+    const pad = (max - min) * 0.12;
+    min -= pad; max += pad;
+    // grid
+    ctx.strokeStyle = '#dcedee'; ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = h * i / 4;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    // zero line if in range
+    if (min < 0 && max > 0) {
+      const zy = h - (0 - min) / (max - min) * h;
+      ctx.strokeStyle = '#b0bec5'; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // line
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = i / (MAX - 1) * w;
+      const y = h - (v - min) / (max - min) * h;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+    // last point
+    const lx = (data.length - 1) / (MAX - 1) * w;
+    const ly = h - (data[data.length - 1] - min) / (max - min) * h;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  return {
+    push(v) { data.push(v); if (data.length > MAX) data.shift(); draw(); },
+    clear() { data.length = 0; draw(); },
+    redraw() { draw(); },
+    lastVal() { return data.length ? data[data.length - 1] : null; }
+  };
+}
+
+const pctChart = makeChart('pctChart', '#0d9a9e', v => v.toFixed(2) + ' %');
+const capChart = makeChart('capChart', '#d64545', v => v.toFixed(2) + ' pF');
+
+window.addEventListener('resize', () => { pctChart.redraw(); capChart.redraw(); });
+
+function ioState(cls, code) {
+  if (cls === 'Output - ON') return ['Output - ON', 'out-on'];
+  if (cls === 'Output - OFF') return ['Output - OFF', 'out-off'];
+  if (cls === 'Input - ON') return ['Input - ON', 'in-on'];
+  if (cls === 'Input - OFF') return ['Input - OFF', 'in-off'];
+  if (cls === 'Output - Analog') return ['Output - Analog', 'analog'];
+  return ['Unknown', ''];
+}
+
+function renderDecode(cfg, vals) {
+  if ((cfg.fc !== 3 && cfg.fc !== 4)) return;
+  const g = i => (cfg.addr <= i && i < cfg.addr + cfg.qty) ? vals[i - cfg.addr] : null;
+
+  const r0 = g(0), r1 = g(1), r2 = g(2), r6 = g(6), r7 = g(7);
+
+  if (r0 !== null) {
+    const pin2 = r0 & 0xFF, pin4 = (r0 >> 8) & 0xFF;
+    const s2 = ioState(PIN2_FN[pin2], pin2), s4 = ioState(PIN_FN[pin4], pin4);
+    setDecode('dPin2', s2[0], '0x' + hex(pin2), s2[1]);
+    setDecode('dPin4', s4[0], '0x' + hex(pin4), s4[1]);
+  }
+  if (r1 !== null) {
+    const pin5 = r1 & 0xFF;
+    const s5 = ioState(PIN_FN[pin5], pin5);
+    setDecode('dPin5', s5[0], '0x' + hex(pin5), s5[1]);
+  }
+  if (r2 !== null) {
+    const signed = r2 > 32767 ? r2 - 65536 : r2;
+    const pct = signed * 0.01;
+    setDecode('dPct', pct.toFixed(2) + ' %', '0x' + r2.toString(16).toUpperCase().padStart(4, '0'));
+    $('pctLast').textContent = pct.toFixed(2) + ' %';
+    pctChart.push(pct);
+  }
+  if (r6 !== null && r7 !== null) {
+    const raw32 = (r6 * 65536) + r7;
+    const cap = raw32 * 0.01;
+    setDecode('dCap', cap.toFixed(2) + ' pF', '0x' + raw32.toString(16).toUpperCase().padStart(8, '0'));
+    $('capLast').textContent = cap.toFixed(2) + ' pF';
+    capChart.push(cap);
+  }
+}
+
+
+function updateStats() {
+  $('stReq').textContent = stats.req;
+  $('stOk').textContent = stats.ok;
+  $('stTimeout').textContent = stats.timeout;
+  $('stCrc').textContent = stats.crc;
+  $('stExc').textContent = stats.exc;
+  $('stTx').textContent = stats.tx;
+  $('stRx').textContent = stats.rx;
+  $('stRtt').textContent = stats.rtt === null ? '--' : stats.rtt + 'ms';
+}
+
+/* ================= Transport abstraction =================
+ * A transport provides:
+ *   connect() -> bool          establish link
+ *   disconnect()               close link
+ *   write(bytes) -> bool       send raw frame
+ *   onData(cb)                 register bytes callback (drives rxBuf)
+ * Serial is fully implemented; WiFi / BLE are reserved stubs.
+ */
+let curTransport = 'serial';
+
+const SerialTransport = {
+  name: 'serial',
+  port: null, reader: null, keepReading: false,
+
+  async connect() {
+    const idx = parseInt($('portSelect').value, 10);
+    if (idx >= 0 && idx < ports.length) this.port = ports[idx];
+    else {
+      try { this.port = await navigator.serial.requestPort(); await refreshPorts(); }
+      catch (e) { logMsg('No port selected: ' + e.message, 'err'); return false; }
+    }
+    try {
+      await this.port.open({
+        baudRate: parseInt($('baudRate').value, 10),
+        dataBits: 8, stopBits: parseInt($('stopBits').value, 10),
+        parity: $('parity').value, flowControl: 'none', bufferSize: 4096
+      });
+      this.keepReading = true;
+      logMsg(`=== Port opened: ${$('baudRate').value} bps, 8${$('parity').value === 'none' ? 'N' : 'E'}${$('stopBits').value} ===`);
+      this.readLoop();
+      return true;
+    } catch (e) {
+      logMsg('Failed to open port: ' + e.message + ' (may be in use)', 'err');
+      this.port = null;
+      return false;
+    }
+  },
+
+  async disconnect() {
+    this.keepReading = false;
+    try { if (this.reader) await this.reader.cancel(); if (this.port) await this.port.close(); } catch (e) {}
+    this.port = null; this.reader = null;
+    logMsg('=== Port closed ===');
+  },
+
+  async write(data) {
+    if (!this.port || !this.port.writable) return false;
+    try {
+      const w = this.port.writable.getWriter();
+      try { await w.write(data); } finally { w.releaseLock(); }
+      stats.tx += data.length;
+      return true;
+    } catch (e) { logMsg('Send failed: ' + e.message, 'err'); return false; }
+  },
+
+  async readLoop() {
+    while (this.keepReading && this.port && this.port.readable) {
+      this.reader = this.port.readable.getReader();
+      try {
+        while (true) {
+          const { value, done } = await this.reader.read();
+          if (done) break;
+          if (value && value.length) {
+            stats.rx += value.length;
+            for (const b of value) rxBuf.push(b);
+            if (waiter) tryDispatch();
+            else if (rxBuf.length) scheduleRxFlush();
+          }
+        }
+      } catch (e) {
+        if (this.keepReading) logMsg('Read error: ' + e.message, 'err');
+      } finally { this.reader.releaseLock(); this.reader = null; }
+    }
+  },
+
+  isConnected() { return !!(this.port && this.port.writable); }
+};
+
+/* Reserved stubs - implement when firmware supports them */
+/* WiFi WebSocket transport - Modbus RTU over ws:// bridge */
+function wsArrayBufferToBytes(buf) {
+  if (!buf) return new Uint8Array(0);
+  if (typeof buf === 'string') {
+    return new Uint8Array([...buf].map(c => c.charCodeAt(0) & 0xFF));
+  }
+  if (buf instanceof ArrayBuffer) return new Uint8Array(buf);
+  if (ArrayBuffer.isView(buf)) return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (typeof Blob !== 'undefined' && buf instanceof Blob) return new Uint8Array(0); /* async only */
+  return new Uint8Array(0);
+}
+const WsTransport = {
+  name: 'wifi',
+  sock: null,
+  onData: null,          /* set by init (drives rxBuf) */
+  setHandler(cb) { this.onData = cb; },
+
+  async connect() {
+    const host = $('wifiHost').value.trim() || '192.168.4.1';
+    const port = parseInt($('wifiPort').value, 10) || 8090;
+    const url = `ws://${host}:${port}`;
+    let sock;
+    try {
+      sock = new WebSocket(url, 'modbus');
+      sock.binaryType = 'arraybuffer';   /* ensure binary delivered as ArrayBuffer, not Blob */
+    } catch (e) { logMsg('=== WS address error: ' + e.message + ' ===', 'err'); return false; }
+
+    return await new Promise(resolve => {
+      let settled = false;
+      const finish = (ok, msg) => { if (settled) return; settled = true; clearTimeout(timer);
+        if (!ok) { sock.onopen = sock.onerror = sock.onclose = sock.onmessage = null; }
+        resolve(ok); if (msg) logMsg(msg, ok ? 'info' : 'err'); };
+      const timer = setTimeout(() => finish(false, `=== WS connect timeout: ${url} ===`), 5000);
+
+      sock.onopen = () => {
+        this.sock = sock;
+        sock.onmessage = ev => {
+          const data = wsArrayBufferToBytes(ev.data);
+          if (!data || !data.length) {
+            logMsg('WS got empty frame (' + (ev.data ? ev.data.constructor.name : 'null') + ')', 'warn');
+            return;
+          }
+          stats.rx += data.length;
+          rawLog('rx', data);
+          for (const b of data) rxBuf.push(b);
+          if (waiter) tryDispatch();
+          else if (rxBuf.length) scheduleRxFlush();
+        };
+        finish(true, `=== WS connected: ${url} (long-lived) ===`);
+      };
+      sock.onerror = (ev) => {
+        logMsg('=== WS error event (detail below) ===', 'err');
+        finish(false, `=== WS connect failed: ${url} (error event) ===`);
+      };
+      sock.onclose = (ev) => {
+        flushRawPend();
+logMsg(`=== WS closed code=${ev.code} reason="${ev.reason}" wasClean=${ev.wasClean} ===`, 'err');
+        if (this.sock === sock) { this.sock = null; setConnUI(false, t('unplugged')); setPollUI(false); }
+        finish(false, '=== WS closed ===');
+      };
+    });
+  },
+
+  async disconnect() {
+    if (this.sock) { try { this.sock.close(); } catch (e) {} this.sock = null; }
+    logMsg('=== WiFi disconnected ===');
+  },
+
+  async write(data) {
+    if (!this.sock || this.sock.readyState !== WebSocket.OPEN) return false;
+    try {
+      this.sock.send(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength));
+      stats.tx += data.length;
+      rawLog('tx', data);
+      return true;
+    } catch (e) { logMsg('WS write failed: ' + e.message, 'err'); return false; }
+  },
+
+  isConnected() { return !!(this.sock && this.sock.readyState === WebSocket.OPEN); }
+};
+
+/* BLE NUS (Nordic UART Service) transport - Modbus RTU over GATT pipe */
+const NUS_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   /* web -> device (write) */
+const NUS_TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   /* device -> web (notify) */
+
+const BleTransport = {
+  name: 'ble',
+  device: null, server: null, rxChar: null, txChar: null,
+
+  async pick() {
+    if (!navigator.bluetooth) {
+      logMsg(window.isSecureContext
+        ? 'Web Bluetooth not supported. Use Chrome / Edge.'
+        : 'Web Bluetooth unavailable: page is not a secure context (use HTTPS or localhost).', 'err');
+      return;
+    }
+    try {
+      this.device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: 'Centaurus' }],
+        optionalServices: [NUS_SVC]
+      });
+      const sel = $('bleDeviceSel');
+      sel.innerHTML = '';
+      const o = document.createElement('option');
+      o.value = '0';
+      o.textContent = this.device.name || 'BLE device';
+      sel.appendChild(o);
+      logMsg('=== BLE device selected: ' + (this.device.name || 'unnamed') + ' ===', 'info');
+    } catch (e) {
+      if (isPermError(e)) { logMsg('=== Web Bluetooth blocked: ' + e.message + ' ===', 'err'); logMsg('Hint: ' + webApiHint('bluetooth'), 'warn'); }
+      else logMsg('BLE scan cancelled: ' + e.message, 'err');
+    }
+  },
+
+  async connect() {
+    if (!navigator.bluetooth) { logMsg('Web Bluetooth not supported. Use Chrome / Edge.', 'err'); return false; }
+    if (!this.device) { await this.pick(); if (!this.device) return false; }
+    try {
+      this.server = await this.device.gatt.connect();
+      /* Request a larger MTU when the browser supports it (Chrome stable: not yet,
+       * firmware preferred MTU is 256 and negotiated by the OS stack otherwise). */
+      try {
+        if (typeof this.server.requestMTU === 'function') {
+          const mtu = await this.server.requestMTU(256);
+          logMsg('=== BLE MTU negotiated: ' + mtu + ' ===', 'info');
+        }
+      } catch (e) { logMsg('BLE MTU request skipped: ' + e.message, 'warn'); }
+      const svc = await this.server.getPrimaryService(NUS_SVC);
+      this.rxChar = await svc.getCharacteristic(NUS_RX);
+      this.txChar = await svc.getCharacteristic(NUS_TX);
+      await this.txChar.startNotifications();
+      this.txChar.addEventListener('characteristicvaluechanged', ev => {
+        const dv = ev.target.value;
+        const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+        stats.rx += bytes.length;
+        rawLog('rx', bytes);
+        for (const b of bytes) rxBuf.push(b);
+        if (waiter) tryDispatch();
+        else if (rxBuf.length) scheduleRxFlush();
+      });
+      this.device.addEventListener('gattserverdisconnected', () => {
+        flushRawPend();
+        this.server = null;
+        setConnUI(false, t('unplugged'));
+        setPollUI(false);
+        logMsg('=== BLE disconnected ===', 'err');
+      });
+      logMsg('=== BLE connected: ' + (this.device.name || 'device') + ' ===', 'info');
+      return true;
+    } catch (e) {
+      logMsg('BLE connect failed: ' + e.message, 'err');
+      return false;
+    }
+  },
+
+  async disconnect() {
+    try { if (this.txChar) await this.txChar.stopNotifications(); } catch (e) {}
+    try { if (this.server) this.server.disconnect(); } catch (e) {}
+    this.server = null; this.rxChar = null; this.txChar = null;
+    logMsg('=== BLE disconnected ===');
+  },
+
+  async write(data) {
+    if (!this.rxChar) return false;
+    try {
+      for (let off = 0; off < data.length; off += 180) {
+        await this.rxChar.writeValue(data.subarray(off, off + 180));
+      }
+      stats.tx += data.length;
+      rawLog('tx', data);
+      return true;
+    } catch (e) { logMsg('BLE write failed: ' + e.message, 'err'); return false; }
+  },
+
+  isConnected() { return !!(this.server && this.server.connected); }
+};
+
+const TRANSPORTS = { serial: SerialTransport, wifi: WsTransport, ble: BleTransport };
+function tp() { return TRANSPORTS[curTransport]; }
+
+/* ================= Environment / capability detection =================
+ * Web Serial and Web Bluetooth require a secure context (HTTPS or localhost)
+ * and, inside an iframe, an explicit allow="serial; bluetooth" from the parent.
+ * A HTTPS page cannot open ws:// (mixed content), so the WiFi bridge needs
+ * http://localhost (or wss) in that case. */
+let envSerialBlocked = false;   /* set when a real API probe is rejected */
+function evaluateEnv() {
+  const secure = window.isSecureContext;
+  const inIframe = window.self !== window.top;
+  const https = location.protocol === 'https:';
+  const wifiHost = ($('wifiHost') && $('wifiHost').value.trim()) || '192.168.4.1';
+  const loopback = /^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(wifiHost);
+  const pageLoopback = /^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(location.hostname);
+  let crossOrigin = false;
+  if (inIframe) { try { crossOrigin = new URL(window.top.location.href).origin !== location.origin; } catch (e) { crossOrigin = true; } }
+
+  const serial = !navigator.serial ? { s: 'no', r: t('envNoSerialApi') }
+              : envSerialBlocked ? { s: 'no', r: t('envNoSerialApi') }
+              : (!secure ? { s: 'no', r: t('envNeedSecure') }
+              : (inIframe ? { s: 'cond', r: t('envIframeAllow') } : { s: 'ok', r: '' }));
+  const ble = !navigator.bluetooth ? { s: 'no', r: t('envNoBleApi') }
+              : (!secure ? { s: 'no', r: t('envNeedSecure') }
+              : (inIframe ? { s: 'cond', r: t('envIframeAllow') } : { s: 'ok', r: '' }));
+  const wifi = (https && !loopback) ? { s: 'no', r: t('envMixedWs') }
+              : (!pageLoopback ? { s: 'cond', r: t('envWifiRoute') }
+              : { s: 'ok', r: '' });
+
+  const order = ['serial', 'ble', 'wifi'];
+  const rec = order.find(k => ({ serial, ble, wifi })[k].s === 'ok') || null;
+  return { secure, inIframe, crossOrigin, https, serial, ble, wifi, rec };
+}
+
+function renderEnv() {
+  const env = evaluateEnv();
+  $('envSummary').textContent = (env.secure ? t('envSecureOk') : t('envSecureNo')) + ' · ' + (env.inIframe ? t('envInIframe') : t('envTopPage'));
+  const body = $('envBody');
+  body.innerHTML = '';
+  for (const key of ['serial', 'wifi', 'ble']) {
+    const st = env[key];
+    const row = document.createElement('div');
+    row.className = 'env-line ' + (st.s === 'ok' ? 'ok' : st.s === 'cond' ? 'cond' : 'no');
+    const name = document.createElement('span'); name.className = 'env-name';
+    name.textContent = t('envTr' + key.charAt(0).toUpperCase() + key.slice(1));
+    const state = document.createElement('span'); state.className = 'env-state';
+    state.textContent = st.s === 'ok' ? '✔ ' + t('envAvailable') : st.s === 'cond' ? '! ' + t('envCond') : '✘ ' + t('envUnavailable');
+    row.appendChild(name); row.appendChild(state);
+    if (st.r) { const rs = document.createElement('span'); rs.className = 'env-reason'; rs.textContent = st.r; row.appendChild(rs); }
+    if (env.rec === key) { const rc = document.createElement('span'); rc.className = 'env-rec'; rc.textContent = '★ ' + t('envRecommend'); row.appendChild(rc); }
+    body.appendChild(row);
+  }
+  return env;
+}
+
+/* Host page CSP (e.g. SharePoint / corporate portals) can block the WebSocket
+ * bridge without any JS-visible error, so surface the violation explicitly. */
+document.addEventListener('securitypolicyviolation', e => {
+  const dir = e.violatedDirective || e.effectiveDirective || '';
+  const target = e.blockedURI || e.sourceFile || '';
+  logMsg('CSP blocked [' + dir + '] ' + target, 'err');
+  if (/connect/i.test(dir)) logMsg(t('envCsp'), 'warn');
+}, false);
+
+/* Probe the serial permission at runtime (authoritative, catches iframe / CSP) */
+async function probeEnv() {
+  if (navigator.serial && window.isSecureContext) {
+    try { await navigator.serial.getPorts(); }
+    catch (e) { if (isPermError(e)) envSerialBlocked = true; }
+  }
+  renderEnv();
+}
+
+function selectTransport(name) {
+  if (TRANSPORTS[name] === undefined) return;
+  if (tp().isConnected()) { logMsg('Disconnect before switching transport', 'warn'); $('transportSel').value = curTransport; return; }
+  curTransport = name;
+  $('tpSerial').hidden = name !== 'serial';
+  $('tpWifi').hidden = name !== 'wifi';
+  $('tpBle').hidden = name !== 'ble';
+  logMsg('=== Transport: ' + name.toUpperCase() + ' ===', 'info');
+}
+$('transportSel').addEventListener('change', e => selectTransport(e.target.value));
+
+/* stub buttons for reserved transports */
+$('wifiScanBtn').addEventListener('click', () => logMsg('=== WiFi scan: ' + t('notImplemented') + ' ===', 'warn'));
+$('wifiTestBtn').addEventListener('click', () => {
+  const host = $('wifiHost').value.trim() || '192.168.4.1';
+  const port = parseInt($('wifiPort').value, 10) || 8090;
+  const url = `ws://${host}:${port}`;
+  logMsg('=== WS test: ' + url + ' (page ' + location.protocol + '//' + location.host + ') ===', 'info');
+  if (location.protocol === 'https:' && !/^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(host)) {
+    logMsg(t('envMixedWs'), 'err');
+    return;
+  }
+  let sock;
+  try { sock = new WebSocket(url, 'modbus'); }
+  catch (e) { logMsg('WS test failed: ' + e.message, 'err'); return; }
+  const done = ok => {
+    try { sock.onopen = sock.onerror = sock.onclose = null; sock.close(); } catch (e) {}
+    if (ok) logMsg('WS test OK: ' + url + ' reachable, handshake accepted', 'info');
+    else logMsg('WS test FAILED: ' + url + ' - check that the PC is joined to hotspot Centaurus-AP, and that the host page CSP allows ws://', 'err');
+  };
+  const timer = setTimeout(() => done(false), 4000);
+  sock.onopen = () => { clearTimeout(timer); done(true); };
+  sock.onerror = () => { clearTimeout(timer); done(false); };
+  sock.onclose = () => { clearTimeout(timer); done(false); };
+});
+$('bleScanBtn').addEventListener('click', () => BleTransport.pick());
+$('connectBtnWifi').addEventListener('click', () => connectShared());
+$('connectBtnBle').addEventListener('click', () => connectShared());
+$('disconnectBtnWifi').addEventListener('click', () => disconnectShared());
+$('disconnectBtnBle').addEventListener('click', () => disconnectShared());
+
+/* ================= Port management (serial) ================= */
+function portLabel(p, i) {
+  if (typeof p.getName === 'function') { try { const n = p.getName(); if (n) return n; } catch (e) {} }
+  const info = p.getInfo();
+  let name = `Port ${i + 1}`;
+  if (info.usbVendorId !== undefined)
+    name += ` (VID:${hex(info.usbVendorId)} PID:${hex(info.usbProductId)})`;
+  return name;
+}
+async function refreshPorts() {
+  if (!navigator.serial) return;
+  try {
+    ports = await navigator.serial.getPorts();
+  } catch (e) {
+    logMsg('=== Web Serial blocked: ' + e.message + ' ===', 'err');
+    logMsg('Hint: ' + webApiHint('serial'), 'warn');
+    return;
+  }
+  const sel = $('portSelect'), prev = sel.value;
+  sel.innerHTML = '';
+  if (!ports.length) { sel.innerHTML = '<option value="-1">Click "Add New Port" to authorize</option>'; return; }
+  ports.forEach((p, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = portLabel(p, i);
+    sel.appendChild(o);
+  });
+  if (prev >= 0 && prev < ports.length) sel.value = prev;
+}
+async function addPort() {
+  try {
+    await navigator.serial.requestPort();
+    await refreshPorts();
+    $('portSelect').selectedIndex = ports.length - 1;
+    logMsg('=== New port authorized ===');
+  } catch (e) {
+    if (isPermError(e)) { logMsg('=== Web Serial blocked: ' + e.message + ' ===', 'err'); logMsg('Hint: ' + webApiHint('serial'), 'warn'); }
+    else logMsg('No port selected: ' + e.message, 'err');
+  }
+}
+
+/* ================= Connect / disconnect (transport agnostic) ================= */
+/* Diagnose why Web Serial/Bluetooth APIs are blocked by permissions policy */
+function webApiHint(api) {
+  if (!window.isSecureContext)
+    return 'Insecure context (HTTP): Web Serial/Bluetooth require HTTPS or localhost. Serve this page over HTTPS.';
+  if (window.self !== window.top)
+    return 'Embedded in iframe: the parent page must add allow="serial; bluetooth" to the <iframe> tag.';
+  return 'Blocked by server Permissions-Policy header: the host must allow "' + api + '" (e.g. Permissions-Policy: ' + api + '=*).';
+}
+function isPermError(e) { return /permission|policies|disallowed|not allowed|secure context|insecure/i.test((e && e.message) || String(e)); }
+
+function setConnUI(connected, label) {
+  $('connBadge').classList.toggle('on', connected);
+  $('connText').textContent = label;
+  $('connectBtn').disabled = connected; $('disconnectBtn').disabled = !connected;
+  $('connectBtnWifi').disabled = connected; $('disconnectBtnWifi').disabled = !connected;
+  $('connectBtnBle').disabled = connected; $('disconnectBtnBle').disabled = !connected;
+}
+
+async function connectShared() {
+  const ok = await tp().connect();
+  if (!ok) return;
+  const label = (curTransport === 'ble')
+    ? `${t('connected')}${BleTransport.device ? (BleTransport.device.name || 'BLE') : 'BLE'}`
+    : (curTransport === 'wifi')
+      ? `${t('connected')}${$('wifiHost').value}:${$('wifiPort').value}`
+      : `${t('connected')}${$('baudRate').value}bps`;
+  setConnUI(true, label);
+
+  /* read config registers (100+) once and fill UI defaults */
+  await readConfigDefaults();
+
+  /* auto-start polling after successful connect */
+  if (!polling) {
+    try {
+      readPollCfg();
+      setPollUI(true);
+      logMsg('=== Auto polling started ===', 'info');
+      pollLoop();
+    } catch (e) { logMsg('Config error, auto polling not started: ' + e.message, 'err'); }
+  }
+}
+
+async function disconnectShared() {
+  setPollUI(false); await sleep(50);
+  await tp().disconnect();
+  cancelRxFlush();
+  setConnUI(false, t('connText'));
+}
+
+/* Read config registers 100-113 (FC03) and fill calibration / pin UI */
+async function readConfigDefaults() {
+  const slave = parseInt($('slaveId').value, 10);
+  if (!(slave >= 1 && slave <= 247)) return;
+  const COUNT = 14;                      /* regs 100..113 */
+  const frame = withCRC([slave, 3, 0, 100, 0, COUNT]);
+  const timeout = Math.max(50, parseInt($(pollTimingIds()[1]).value, 10) || 500);
+  const t0 = performance.now();
+  const res = await transact(frame, timeout);
+  stats.req++;
+  if (res.type !== 'ok' || (res.frame[1] & 0x80) || res.frame.length !== 5 + COUNT * 2) {
+    if (res.type === 'ok') stats.exc++; else if (res.type === 'timeout') stats.timeout++;
+    logMsg('=== Config read failed, UI defaults kept ===', 'warn');
+    updateStats();
+    return;
+  }
+  stats.ok++;
+  logFrame('rx', res.frame, `Config read 100-113 ✓ ${Math.round(performance.now() - t0)}ms`);
+  updateStats();
+
+  const v = [];
+  for (let i = 0; i < COUNT; i++) v.push((res.frame[3 + i * 2] << 8) | res.frame[4 + i * 2]);
+  const reg = n => v[n - 100];
+
+  /* calibration: value is raw 0-100 -> percent as-is */
+  $('calLowVal').value = reg(100);
+  $('calHighVal').value = reg(101);
+  syncCalQuick($('calLowVal'));
+  syncCalQuick($('calHighVal'));
+
+  /* pin2 */
+  $('pin2Func').value = String(reg(102) & 0xFF);
+  $('pin2OutFn').value = String(reg(103) & 0xFF);
+  $('pin2SetPt').value = reg(104);
+  $('pin2Hyst').value = reg(105);
+  syncPin2OutBlock();
+
+  /* pin4 */
+  $('pin4Func').value = String(reg(106) & 0xFF);
+  $('pin4OutFn').value = String(reg(107) & 0xFF);
+  $('pin4SetPt').value = reg(108);
+  $('pin4Hyst').value = reg(109);
+
+  /* pin5 */
+  $('pin5Func').value = String(reg(110) & 0xFF);
+  $('pin5OutFn').value = String(reg(111) & 0xFF);
+  $('pin5SetPt').value = reg(112);
+  $('pin5Hyst').value = reg(113);
+  syncPin5OutBlock();
+
+  logMsg('=== UI defaults loaded from device registers 100-113 ===', 'info');
+}
+
+/* ================= Events ================= */
+$('refreshBtn').addEventListener('click', async () => { await refreshPorts(); logMsg(`=== Port list refreshed: ${ports.length} port(s) ===`); });
+$('addPortBtn').addEventListener('click', addPort);
+$('connectBtn').addEventListener('click', () => connectShared());
+$('disconnectBtn').addEventListener('click', () => disconnectShared());
+
+$('pollBtn').addEventListener('click', async () => {
+  if (polling) { setPollUI(false); return; }
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  try { readPollCfg(); } catch (e) { logMsg('Config error: ' + e.message, 'err'); return; }
+  setPollUI(true);
+  pollLoop();
+});
+$('onceBtn').addEventListener('click', () => { if (port) pollOnce(); else logMsg('Connect the serial port first', 'err'); });
+
+/* WiFi / BLE panes: same polling controls as serial */
+for (const [pbId, obId] of [['pollBtnWifi', 'onceBtnWifi'], ['pollBtnBle', 'onceBtnBle']]) {
+  $(pbId).addEventListener('click', async () => {
+    if (polling) { setPollUI(false); return; }
+    if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+    try { readPollCfg(); } catch (e) { logMsg('Config error: ' + e.message, 'err'); return; }
+    setPollUI(true);
+    pollLoop();
+  });
+  $(obId).addEventListener('click', () => {
+    if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+    pollOnce();
+  });
+}
+
+$('wrBtn').addEventListener('click', async () => {
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  try {
+    const { frame, desc } = buildWriteReq();
+    const timeout = Math.max(50, parseInt($(pollTimingIds()[1]).value, 10) || 500);
+    const t0 = performance.now();
+    const res = await transact(frame, timeout);
+    stats.req++;
+    if (res.type === 'ok') {
+      const f = res.frame;
+      if (f[1] & 0x80) { stats.exc++; logFrame('rx', f, `Exception response: ${EXC_NAME[f[2]] || 'code ' + f[2]}`, 'warn'); }
+      else { stats.ok++; logFrame('rx', f, `${desc} ✓ ${Math.round(performance.now() - t0)}ms`); }
+    } else if (res.type === 'timeout') { stats.timeout++; logMsg(`Write timeout, no response`, 'err'); }
+    else if (res.type === 'crc') { stats.crc++; logFrame('rx', res.frame, 'CRC check failed / invalid frame', 'err'); renderRawError(res.frame, 'CRC check failed'); }
+    updateStats();
+  } catch (e) { logMsg('Write parameter error: ' + e.message, 'err'); }
+});
+
+/* ================= Expert tools tabs ================= */
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+});
+applyLang('zh');
+
+/* Hint visibility toggle: hides hints, register addresses, ranges, raw hex sub-labels */
+$('hintToggle').addEventListener('click', () => {
+  const hidden = document.body.classList.toggle('hints-hidden');
+  $('hintToggle').classList.toggle('off', hidden);
+});
+document.body.classList.add('hints-hidden');
+$('hintToggle').classList.add('off');
+
+function selectExpertTab(name) {
+  document.querySelectorAll('#expertCard .tabpane').forEach(p => p.hidden = p.dataset.pane !== name);
+  document.querySelectorAll('#expertCard .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+}
+document.querySelectorAll('#expertCard .tab').forEach(t => {
+  t.addEventListener('click', () => selectExpertTab(t.dataset.tab));
+});
+$('expertToggle').addEventListener('click', () => {
+  $('expertCard').classList.toggle('collapsed');
+});
+$('pollToggle').addEventListener('click', () => {
+  $('pollCard').classList.toggle('collapsed');
+});
+/* default: both cards collapsed */
+$('pollCard').classList.add('collapsed');
+$('expertCard').classList.add('collapsed');
+/* HEX table / Comm log visibility checkboxes */
+function syncExpertVisibility() {
+  const hex = $('showHexTab').checked, log = $('showLogTab').checked;
+  $('hexPane').hidden = !hex;
+  $('logPane').hidden = !log;
+  document.querySelectorAll('#expertCard .tab').forEach(t => {
+    if (t.dataset.tab === 'hex') t.style.display = hex ? '' : 'none';
+    if (t.dataset.tab === 'log') t.style.display = log ? '' : 'none';
+  });
+  /* if active tab got hidden, fall back to first visible tab */
+  const active = document.querySelector('#expertCard .tab.active');
+  if (active && active.style.display === 'none') {
+    const first = document.querySelector('#expertCard .tab:not([style*="none"])');
+    if (first) selectExpertTab(first.dataset.tab);
+  }
+}
+$('showHexTab').addEventListener('change', syncExpertVisibility);
+$('showLogTab').addEventListener('change', syncExpertVisibility);
+
+/* add tab buttons for optional panes */
+(function () {
+  const hexBtn = document.createElement('button');
+  hexBtn.className = 'tab'; hexBtn.dataset.tab = 'hex'; hexBtn.textContent = 'HEX Table';
+  const logBtn = document.createElement('button');
+  logBtn.className = 'tab'; logBtn.dataset.tab = 'log'; logBtn.textContent = 'Comm Log';
+  const sep = document.querySelector('#expertCard h2 .tabs .sep');
+  sep.insertAdjacentElement('afterend', logBtn);
+  sep.insertAdjacentElement('afterend', hexBtn);
+  hexBtn.addEventListener('click', () => selectExpertTab('hex'));
+  logBtn.addEventListener('click', () => selectExpertTab('log'));
+  selectExpertTab('write');
+  syncExpertVisibility();
+})();
+
+updateStats();
+
+/* Calibration: FC06 write register, low=addr0 high=addr1, setpoint 0-100 sent as hex byte */
+async function sendCalibration(btn, name, addr, valInput) {
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  let slave, percent;
+  try {
+    slave = parseInt($('slaveId').value, 10);
+    if (!(slave >= 1 && slave <= 247)) throw new Error('Slave ID must be 1-247');
+    percent = parseInt(valInput.value, 10);
+    if (isNaN(percent) || percent < 0 || percent > 100) throw new Error('Setpoint must be 0-100');
+  } catch (e) { logMsg('Config error: ' + e.message, 'err'); return; }
+
+  const frame = withCRC([slave, 6, (addr >> 8) & 0xFF, addr & 0xFF, 0x00, percent]);
+  const timeout = Math.max(50, parseInt($(pollTimingIds()[1]).value, 10) || 500);
+  const t0 = performance.now();
+  logMsg(`=== ${name}: sending register ${addr} = ${percent}% (0x${percent.toString(16).padStart(2, '0').toUpperCase()}) ===`, 'info');
+  const res = await transact(frame, timeout);
+  stats.req++;
+  let cls = 'fail';
+  if (res.type === 'ok') {
+    const f = res.frame;
+    if (f[1] & 0x80) {
+      stats.exc++;
+      logFrame('rx', f, `Exception response: ${EXC_NAME[f[2]] || 'code ' + f[2]}`, 'warn');
+      logMsg(`=== ${name}: calibration rejected ===`, 'err');
+    } else {
+      stats.ok++; cls = 'ok';
+      logFrame('rx', f, `${name} ${percent}% ✓ ${Math.round(performance.now() - t0)}ms`);
+      logMsg(`=== ${name}: calibration done ✓ ===`, 'info');
+    }
+  } else if (res.type === 'timeout') {
+    stats.timeout++;
+    logMsg(`=== ${name}: calibration timeout, no response ===`, 'err');
+    if (res.frame && res.frame.length) renderRawError(res.frame, 'Incomplete response');
+  } else if (res.type === 'crc') {
+    stats.crc++;
+    logMsg(`=== ${name}: invalid response ===`, 'err');
+    renderRawError(res.frame, 'CRC check failed');
+  }
+  updateStats();
+  btn.classList.add(cls);
+  setTimeout(() => btn.classList.remove(cls), 1500);
+}
+
+/* Calibration quick setpoint buttons */
+document.querySelectorAll('.cal-quick button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = $(btn.dataset.target);
+    input.value = btn.dataset.val;
+    input.dispatchEvent(new Event('change'));
+  });
+});
+
+/* Highlight matching quick button when setpoint changes */
+function syncCalQuick(input) {
+  const v = input.value.trim();
+  input.closest('.cal-group').querySelectorAll('.cal-quick button')
+    .forEach(b => b.classList.toggle('active', b.dataset.val === v));
+}
+['calLowVal', 'calHighVal'].forEach(id => {
+  $(id).addEventListener('change', e => syncCalQuick(e.target));
+  syncCalQuick($(id));
+});
+
+$('calLowBtn').addEventListener('click', e => sendCalibration(e.currentTarget, 'Low-point calibration', 100, $('calLowVal')));
+$('calHighBtn').addEventListener('click', e => sendCalibration(e.currentTarget, 'High-point calibration', 101, $('calHighVal')));
+
+/* ================= PIN SET (Pin2/4/5, Reg 102-113) ================= */
+const PIN_OUTPUT_MODES = ['0', '1', '2'];   /* NPN / PNP / Push-Pull need output config */
+
+function pin2OutEnabled() {
+  return PIN_OUTPUT_MODES.includes($('pin2Func').value);
+}
+function pin5OutEnabled() {
+  return PIN_OUTPUT_MODES.includes($('pin5Func').value);
+}
+function syncPin2OutBlock() {
+  $('pin2OutBlock').classList.toggle('disabled', !pin2OutEnabled());
+}
+function syncPin5OutBlock() {
+  $('pin5OutBlock').classList.toggle('disabled', !pin5OutEnabled());
+}
+$('pin2Func').addEventListener('change', syncPin2OutBlock);
+$('pin5Func').addEventListener('change', syncPin5OutBlock);
+syncPin2OutBlock();
+syncPin5OutBlock();
+
+/* shared: write a list of registers via FC06, returns true if all ok */
+async function applyPinWrites(tag, writes) {
+  let slave;
+  try {
+    slave = parseInt($('slaveId').value, 10);
+    if (!(slave >= 1 && slave <= 247)) throw new Error('Slave ID must be 1-247');
+  } catch (e) { logMsg('Config error: ' + e.message, 'err'); return false; }
+
+  const timeout = Math.max(50, parseInt($(pollTimingIds()[1]).value, 10) || 500);
+  let allOk = true;
+  logMsg(`=== ${tag}: writing ${writes.length} register(s) ===`, 'info');
+  for (const w of writes) {
+    const frame = withCRC([slave, 6, (w.reg >> 8) & 0xFF, w.reg & 0xFF, (w.val >> 8) & 0xFF, w.val & 0xFF]);
+    const t0 = performance.now();
+    const res = await transact(frame, timeout);
+    stats.req++;
+    if (res.type === 'ok' && !(res.frame[1] & 0x80)) {
+      stats.ok++;
+      logFrame('rx', res.frame, `${w.name} reg${w.reg} = 0x${w.val.toString(16).toUpperCase()} ✓ ${Math.round(performance.now() - t0)}ms`);
+    } else if (res.type === 'ok') {
+      stats.exc++;
+      allOk = false;
+      logFrame('rx', res.frame, `${w.name}: exception ${EXC_NAME[res.frame[2]] || 'code ' + res.frame[2]}`, 'warn');
+    } else if (res.type === 'timeout') {
+      stats.timeout++; allOk = false;
+      logMsg(`${w.name}: timeout, no response`, 'err');
+    } else {
+      allOk = false;
+    }
+  }
+  updateStats();
+  logMsg(`=== ${tag} ${allOk ? 'applied ✓' : 'failed'} ===`, allOk ? 'info' : 'err');
+  return allOk;
+}
+
+$('pin2SetBtn').addEventListener('click', async () => {
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  const writes = [{ reg: 102, val: parseInt($('pin2Func').value, 10), name: 'Pin2 Function' }];
+  if (pin2OutEnabled()) {
+    const setPt = parseInt($('pin2SetPt').value, 10);
+    const hyst = parseInt($('pin2Hyst').value, 10);
+    if (isNaN(setPt) || setPt < 0 || setPt > 100) { logMsg('Config error: Pin2 Set Point must be 0-100', 'err'); return; }
+    if (isNaN(hyst) || hyst < 0 || hyst > 100) { logMsg('Config error: Pin2 Hysteresis must be 0-100', 'err'); return; }
+    writes.push({ reg: 103, val: parseInt($('pin2OutFn').value, 10), name: 'Pin2 Output Function' });
+    writes.push({ reg: 104, val: setPt, name: 'Pin2 Output Set Point' });
+    writes.push({ reg: 105, val: hyst, name: 'Pin2 Output Hysteresis' });
+  }
+  $('pin2SetBtn').disabled = true;
+  await applyPinWrites('PIN2 SET', writes);
+  $('pin2SetBtn').disabled = false;
+});
+
+$('pin4SetBtn').addEventListener('click', async () => {
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  const setPt = parseInt($('pin4SetPt').value, 10);
+  const hyst = parseInt($('pin4Hyst').value, 10);
+  if (isNaN(setPt) || setPt < 0 || setPt > 100) { logMsg('Config error: Pin4 Set Point must be 0-100', 'err'); return; }
+  if (isNaN(hyst) || hyst < 0 || hyst > 100) { logMsg('Config error: Pin4 Hysteresis must be 0-100', 'err'); return; }
+  const writes = [
+    { reg: 106, val: parseInt($('pin4Func').value, 10), name: 'Pin4 Function' },
+    { reg: 107, val: parseInt($('pin4OutFn').value, 10), name: 'Pin4 Output Function' },
+    { reg: 108, val: setPt, name: 'Pin4 Output Set Point' },
+    { reg: 109, val: hyst, name: 'Pin4 Output Hysteresis' },
+  ];
+  $('pin4SetBtn').disabled = true;
+  await applyPinWrites('PIN4 SET', writes);
+  $('pin4SetBtn').disabled = false;
+});
+
+$('pin5SetBtn').addEventListener('click', async () => {
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  const writes = [{ reg: 110, val: parseInt($('pin5Func').value, 10), name: 'Pin5 Function' }];
+  if (pin5OutEnabled()) {
+    const setPt = parseInt($('pin5SetPt').value, 10);
+    const hyst = parseInt($('pin5Hyst').value, 10);
+    if (isNaN(setPt) || setPt < 0 || setPt > 100) { logMsg('Config error: Pin5 Set Point must be 0-100', 'err'); return; }
+    if (isNaN(hyst) || hyst < 0 || hyst > 100) { logMsg('Config error: Pin5 Hysteresis must be 0-100', 'err'); return; }
+    writes.push({ reg: 111, val: parseInt($('pin5OutFn').value, 10), name: 'Pin5 Output Function' });
+    writes.push({ reg: 112, val: setPt, name: 'Pin5 Output Set Point' });
+    writes.push({ reg: 113, val: hyst, name: 'Pin5 Output Hysteresis' });
+  }
+  $('pin5SetBtn').disabled = true;
+  await applyPinWrites('PIN5 SET', writes);
+  $('pin5SetBtn').disabled = false;
+});
+
+$('rawSendBtn').addEventListener('click', async () => {
+  if (!tp().isConnected()) { logMsg('Connect first', 'err'); return; }
+  try {
+    const cleaned = $('rawInput').value.replace(/0x/gi, ' ').replace(/[^0-9a-fA-F]/g, ' ').trim();
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (!parts.length || parts.some(p => p.length > 2)) throw new Error('Invalid HEX');
+    const data = Uint8Array.from(parts.map(p => parseInt(p, 16)));
+    if (await tp().write(data)) logFrame('tx', data, '(manual raw frame)');
+  } catch (e) { logMsg('HEX format error: ' + e.message, 'err'); }
+});
+
+$('crcInput').addEventListener('input', () => {
+  const v = $('crcInput').value.trim();
+  if (!v) { $('crcOut').textContent = ''; return; }
+  try {
+    const cleaned = v.replace(/0x/gi, ' ').replace(/[^0-9a-fA-F]/g, ' ').trim();
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (!parts.length || parts.some(p => p.length > 2)) throw new Error();
+    const data = Uint8Array.from(parts.map(p => parseInt(p, 16)));
+    const f = withCRC(data);
+    const c = crc16(data);
+    $('crcOut').textContent = `CRC16 = ${hex((c >> 8) & 0xFF)} ${hex(c & 0xFF)} (MSB first)  |  Frame order: ${hex(c & 0xFF)} ${hex((c >> 8) & 0xFF)}  |  Full frame: ${bytesToHex(f)}`;
+  } catch (e) { $('crcOut').textContent = 'Invalid HEX format'; }
+});
+
+$('clearLogBtn').addEventListener('click', () => { $('logArea').innerHTML = ''; });
+
+/* Adjust quantity max when function code changes */
+$('funcCode').addEventListener('change', () => {
+  const fc = parseInt($('funcCode').value, 16);
+  $('quantity').max = (fc === 1 || fc === 2) ? 2000 : 125;
+  if (+$('quantity').value > +$('quantity').max) $('quantity').value = +$('quantity').max;
+});
+
+/* Unplug listener (serial only) */
+if (navigator.serial) {
+  navigator.serial.addEventListener('disconnect', e => {
+    if (e.target === SerialTransport.port) {
+      setPollUI(false); SerialTransport.keepReading = false; SerialTransport.port = null;
+      setConnUI(false, t('unplugged'));
+      logMsg('=== Serial device disconnected ===', 'err');
+    }
+    refreshPorts();
+  });
+  navigator.serial.addEventListener('connect', () => refreshPorts());
+  refreshPorts();
+} else {
+  $('connText').textContent = 'Web Serial not supported';
+  logMsg(window.isSecureContext
+    ? 'This browser does not support Web Serial API. Please use Chrome / Edge.'
+    : 'Web Serial unavailable: page is not a secure context (use HTTPS or localhost). WiFi transport still works.', 'err');
+}
+
+bindRawClear();
+updateStats();
+/* Environment check: secure context / iframe / mixed-content capabilities */
+(function envCheck() {
+  const env = renderEnv();
+  logMsg('=== Environment: ' + (env.secure ? t('envSecureOk') : t('envSecureNo')) + ' · ' + (env.inIframe ? t('envInIframe') : t('envTopPage')) + ' · ' + location.protocol + '//' + location.host + ' ===', 'info');
+  if (env.rec) {
+    logMsg('Recommended transport: ' + t('envTr' + env.rec.charAt(0).toUpperCase() + env.rec.slice(1)), 'info');
+  }
+  for (const k of ['serial', 'ble', 'wifi']) {
+    if (env[k].s === 'no') logMsg(t('envTr' + k.charAt(0).toUpperCase() + k.slice(1)) + ': ' + t('envUnavailable') + ' - ' + env[k].r, 'warn');
+  }
+  probeEnv();   /* authoritative permission probe, re-renders the card */
+})();
+logMsg('=== Centaurus Tool v1.1 (WiFi/WebSocket + raw logs) ===', 'info');
+</script>
+</body>
+</html>
