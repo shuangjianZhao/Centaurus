@@ -549,6 +549,8 @@
           <label>SSID</label><input type="text" id="wifiSsid" value="Centaurus-AP" placeholder="Centaurus-XXXX">
           <label data-i18n="host">主机</label><input type="text" id="wifiHost" value="192.168.4.1">
           <label data-i18n="port2">端口</label><input type="number" id="wifiPort" value="8090" min="1" max="65535">
+          <label data-i18n="proto">协议</label>
+          <span><select id="wifiProto"><option value="ws" selected>ws://</option><option value="wss">wss://</option></select></span>
         </div>
         <div class="row-btns">
           <button class="ghost small" id="wifiScanBtn" data-i18n="wifiScan">扫描网络</button>
@@ -850,7 +852,7 @@ const I18N = {
     wifiMon: 'WiFi 监测', bleMon: 'BLE 监测', netStatus: '网络状态', ipAddr: 'IP 地址',
     connInt: '连接间隔', linkState: '链路状态',
     wifiScan: '扫描网络', bleScan: '搜索蓝牙设备', scanFirst: '请先搜索', host: '主机', port2: '端口', device: '设备',
-    testConn: '测试连接',
+    testConn: '测试连接', proto: '协议',
     rawComm: '原始通信',
     envCheck: '环境检测', envAvailable: '可用', envUnavailable: '不可用', envCond: '有条件',
     envRecommend: '推荐使用', envSecureOk: '安全上下文', envSecureNo: '非安全上下文 (HTTP)',
@@ -862,6 +864,7 @@ const I18N = {
     envMixedWs: 'HTTPS 页面禁止 ws:// 混合内容，WiFi 需用 http://localhost 或 wss',
     envWifiRoute: '需先连接设备热点 Centaurus-AP，且页面主机可路由到设备 IP',
     envCsp: '宿主页面 CSP 禁止该连接，需改用其他部署方式（如 http://localhost）',
+    envWssCert: 'wss:// 需可信 TLS 证书（自签名会被浏览器拒绝），建议用本地代理 tools/ws_tls_proxy.py',
     envTrSerial: '串口 USB', envTrWifi: 'WiFi', envTrBle: '蓝牙 BLE',
     notImplemented: '功能预留：当前固件尚未实现该通信方式',
     baud: '波特率', parity: '校验', stopBits: '停止位', connect: '连接', disconnect: '断开',
@@ -895,7 +898,7 @@ const I18N = {
     wifiMon: 'WiFi Monitor', bleMon: 'BLE Monitor', netStatus: 'Network status', ipAddr: 'IP address',
     connInt: 'Conn. interval', linkState: 'Link state',
     wifiScan: 'Scan Networks', bleScan: 'Scan BLE Devices', scanFirst: 'Scan first', host: 'Host', port2: 'Port', device: 'Device',
-    testConn: 'Test Connection',
+    testConn: 'Test Connection', proto: 'Protocol',
     rawComm: 'Raw Comm',
     envCheck: 'Environment Check', envAvailable: 'Available', envUnavailable: 'Unavailable', envCond: 'Conditional',
     envRecommend: 'Recommended', envSecureOk: 'Secure context', envSecureNo: 'Insecure context (HTTP)',
@@ -907,6 +910,7 @@ const I18N = {
     envMixedWs: 'HTTPS page blocks ws:// mixed content; use http://localhost or wss for WiFi',
     envWifiRoute: 'join the device hotspot Centaurus-AP first, and the page host must route to the device IP',
     envCsp: 'blocked by host page CSP; deploy differently (e.g. http://localhost)',
+    envWssCert: 'wss:// needs a trusted TLS certificate (self-signed is rejected); use tools/ws_tls_proxy.py locally',
     envTrSerial: 'Serial USB', envTrWifi: 'WiFi', envTrBle: 'Bluetooth BLE',
     notImplemented: 'Reserved: this transport is not implemented in firmware yet',
     baud: 'Baud', parity: 'Parity', stopBits: 'Stop bits', connect: 'Connect', disconnect: 'Disconnect',
@@ -940,7 +944,7 @@ const I18N = {
     wifiMon: 'WiFi-Überwachung', bleMon: 'BLE-Überwachung', netStatus: 'Netzwerkstatus', ipAddr: 'IP-Adresse',
     connInt: 'Verbindungsintervall', linkState: 'Verbindungsstatus',
     wifiScan: 'Netzwerke suchen', bleScan: 'BLE-Geräte suchen', scanFirst: 'Zuerst suchen', host: 'Host', port2: 'Port', device: 'Gerät',
-    testConn: 'Verbindung testen',
+    testConn: 'Verbindung testen', proto: 'Protokoll',
     rawComm: 'Roh-Kommunikation',
     envCheck: 'Umgebungsprüfung', envAvailable: 'Verfügbar', envUnavailable: 'Nicht verfügbar', envCond: 'Bedingt',
     envRecommend: 'Empfohlen', envSecureOk: 'Sicherer Kontext', envSecureNo: 'Unsicherer Kontext (HTTP)',
@@ -952,6 +956,7 @@ const I18N = {
     envMixedWs: 'HTTPS-Seite blockiert ws:// (Mixed Content); WiFi über http://localhost oder wss',
     envWifiRoute: 'zuerst mit Geräte-Hotspot Centaurus-AP verbinden, und der Seitenhost muss die Geräte-IP erreichen',
     envCsp: 'durch CSP der Hostseite blockiert; anders bereitstellen (z. B. http://localhost)',
+    envWssCert: 'wss:// benötigt ein vertrauenswürdiges TLS-Zertifikat (selbstsigniert wird abgelehnt); lokalen Proxy tools/ws_tls_proxy.py verwenden',
     envTrSerial: 'Seriell USB', envTrWifi: 'WiFi', envTrBle: 'Bluetooth BLE',
     notImplemented: 'Reserviert: Diese Übertragungsart ist in der Firmware noch nicht implementiert',
     baud: 'Baudrate', parity: 'Parität', stopBits: 'Stoppbits', connect: 'Verbinden', disconnect: 'Trennen',
@@ -1625,7 +1630,7 @@ const WsTransport = {
   async connect() {
     const host = $('wifiHost').value.trim() || '192.168.4.1';
     const port = parseInt($('wifiPort').value, 10) || 8090;
-    const url = `ws://${host}:${port}`;
+    const url = `${$('wifiProto').value}://${host}:${port}`;
     let sock;
     try {
       sock = new WebSocket(url, 'modbus');
@@ -1799,6 +1804,7 @@ function evaluateEnv() {
   const wifiHost = ($('wifiHost') && $('wifiHost').value.trim()) || '192.168.4.1';
   const loopback = /^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(wifiHost);
   const pageLoopback = /^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(location.hostname);
+  const scheme = ($('wifiProto') && $('wifiProto').value) || 'ws';
   let crossOrigin = false;
   if (inIframe) { try { crossOrigin = new URL(window.top.location.href).origin !== location.origin; } catch (e) { crossOrigin = true; } }
 
@@ -1809,9 +1815,10 @@ function evaluateEnv() {
   const ble = !navigator.bluetooth ? { s: 'no', r: t('envNoBleApi') }
               : (!secure ? { s: 'no', r: t('envNeedSecure') }
               : (inIframe ? { s: 'cond', r: t('envIframeAllow') } : { s: 'ok', r: '' }));
-  const wifi = (https && !loopback) ? { s: 'no', r: t('envMixedWs') }
+  const wifi = (https && scheme === 'ws' && !loopback) ? { s: 'no', r: t('envMixedWs') }
+              : (scheme === 'wss' ? { s: 'cond', r: t('envWssCert') }
               : (!pageLoopback ? { s: 'cond', r: t('envWifiRoute') }
-              : { s: 'ok', r: '' });
+              : { s: 'ok', r: '' }));
 
   const order = ['serial', 'ble', 'wifi'];
   const rec = order.find(k => ({ serial, ble, wifi })[k].s === 'ok') || null;
@@ -1873,9 +1880,10 @@ $('wifiScanBtn').addEventListener('click', () => logMsg('=== WiFi scan: ' + t('n
 $('wifiTestBtn').addEventListener('click', () => {
   const host = $('wifiHost').value.trim() || '192.168.4.1';
   const port = parseInt($('wifiPort').value, 10) || 8090;
-  const url = `ws://${host}:${port}`;
+  const scheme = $('wifiProto').value;
+  const url = `${scheme}://${host}:${port}`;
   logMsg('=== WS test: ' + url + ' (page ' + location.protocol + '//' + location.host + ') ===', 'info');
-  if (location.protocol === 'https:' && !/^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(host)) {
+  if (location.protocol === 'https:' && scheme === 'ws' && !/^(localhost|127\.0\.0\.1|\[?::1\]?)$/i.test(host)) {
     logMsg(t('envMixedWs'), 'err');
     return;
   }
@@ -1893,6 +1901,15 @@ $('wifiTestBtn').addEventListener('click', () => {
   sock.onclose = () => { clearTimeout(timer); done(false); };
 });
 $('bleScanBtn').addEventListener('click', () => BleTransport.pick());
+$('wifiProto').addEventListener('change', e => {
+  if (e.target.value === 'wss') {
+    if ($('wifiPort').value === '8090') $('wifiPort').value = '8443';   /* local TLS proxy default */
+    logMsg('wss:// selected: needs a trusted TLS endpoint. Start the local proxy: python tools/ws_tls_proxy.py --cert cert.pem --key key.pem', 'info');
+  } else if ($('wifiPort').value === '8443') {
+    $('wifiPort').value = '8090';
+  }
+  renderEnv();
+});
 $('connectBtnWifi').addEventListener('click', () => connectShared());
 $('connectBtnBle').addEventListener('click', () => connectShared());
 $('disconnectBtnWifi').addEventListener('click', () => disconnectShared());
